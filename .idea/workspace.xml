@@ -4,14 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="49b2f4c4-452d-41ac-a4d2-1a8499548648" name="更改" comment="feat:基本功能">
+    <list default="true" id="49b2f4c4-452d-41ac-a4d2-1a8499548648" name="更改" comment="feat:自动添加">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/CodeAnnotationToolWindowPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/CodeAnnotationToolWindowPanel.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/JsonUtil.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/JsonUtil.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/MethodContext.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/MethodContext.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/MethodContextExtractor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/MethodContextExtractor.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/OpenCodeAnnotationToolWindowAction.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/OpenCodeAnnotationToolWindowAction.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/META-INF/plugin.xml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/META-INF/plugin.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -144,7 +139,7 @@
       <workItem from="1774941277318" duration="31000" />
       <workItem from="1774941327605" duration="9650000" />
       <workItem from="1774966036971" duration="37000" />
-      <workItem from="1774966088410" duration="3026000" />
+      <workItem from="1774966088410" duration="5100000" />
     </task>
     <task id="LOCAL-00001" summary="feat:基本功能">
       <option name="closed" value="true" />
@@ -170,7 +165,15 @@
       <option name="project" value="LOCAL" />
       <updated>1774966118971</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="feat:自动添加">
+      <option name="closed" value="true" />
+      <created>1774971197829</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1774971197829</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -201,15 +204,16 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="feat:基本功能" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat:基本功能" />
+    <MESSAGE value="feat:自动添加" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat:自动添加" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/CodeAnnotationToolWindowPanel.java</url>
-          <line>123</line>
-          <option name="timeStamp" value="2" />
+          <line>177</line>
+          <option name="timeStamp" value="3" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

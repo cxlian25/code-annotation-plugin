@@ -18,6 +18,7 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.popup.Balloon;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.awt.RelativePoint;
@@ -195,7 +196,7 @@ public class CodeAnnotationToolWindowPanel {
 
         Document document = editor.getDocument();
         int insertOffset = Math.max(0, Math.min(context.getMethodStartOffset(), document.getTextLength()));
-        String previewText = toPreviewCommentText(generatedComment);
+        String previewText = toPreviewCommentText(generatedComment, document, insertOffset);
         if (previewText.isBlank()) {
             appendOutputLater("[错误] 生成注释为空，未执行插入。");
             return;
@@ -213,39 +214,77 @@ public class CodeAnnotationToolWindowPanel {
     }
 
     @NotNull
-    private String toPreviewCommentText(@NotNull String generatedComment) {
+    private String toPreviewCommentText(@NotNull String generatedComment, @NotNull Document document, int insertOffset) {
         String content = generatedComment.trim();
         if (content.isEmpty()) {
             return "";
         }
 
-        boolean isAlreadyComment = content.startsWith("//") || content.startsWith("/*");
-        String text;
-        if (isAlreadyComment) {
-            text = content;
-        } else {
-            String normalized = content.replace("\r\n", "\n").replace("\r", "\n");
-            String[] lines = normalized.split("\n", -1);
-            StringBuilder builder = new StringBuilder();
-            builder.append("/**\n");
-            for (String line : lines) {
-                if (line.isBlank()) {
-                    builder.append(" *\n");
+        String indent = detectLineIndent(document, insertOffset);
+        String normalized = content.replace("\r\n", "\n").replace("\r", "\n");
+        String[] lines = normalized.split("\n", -1);
+
+        StringBuilder builder = new StringBuilder();
+        boolean isComment = content.startsWith("//") || content.startsWith("/*");
+
+        if (isComment) {
+            for (int i = 0; i < lines.length; i++) {
+                String line = lines[i].trim();
+                if (line.isEmpty()) {
+                    builder.append(indent);
+                } else if (line.startsWith("//") || line.startsWith("/*") || line.startsWith("*") || line.startsWith("*/")) {
+                    builder.append(indent).append(line);
                 } else {
-                    builder.append(" * ").append(line).append("\n");
+                    builder.append(indent).append("// ").append(line);
+                }
+                if (i < lines.length - 1) {
+                    builder.append("\n");
                 }
             }
-            builder.append(" */");
-            text = builder.toString();
+        } else {
+            builder.append(indent).append("/**\n");
+            for (String line : lines) {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty()) {
+                    builder.append(indent).append(" *\n");
+                } else {
+                    builder.append(indent).append(" * ").append(trimmed).append("\n");
+                }
+            }
+            builder.append(indent).append(" */");
         }
 
-        if (!text.endsWith("\n")) {
-            text += "\n";
+        if (!builder.toString().endsWith("\n")) {
+            builder.append("\n");
         }
-        if (!text.endsWith("\n\n")) {
-            text += "\n";
+        if (!builder.toString().endsWith("\n\n")) {
+            builder.append("\n");
         }
-        return text;
+        return builder.toString();
+    }
+
+    @NotNull
+    private String detectLineIndent(@NotNull Document document, int offset) {
+        int textLength = document.getTextLength();
+        if (textLength == 0) {
+            return "";
+        }
+
+        int safeOffset = Math.max(0, Math.min(offset, Math.max(0, textLength - 1)));
+        int lineNumber = document.getLineNumber(safeOffset);
+        int lineStart = document.getLineStartOffset(lineNumber);
+        int lineEnd = document.getLineEndOffset(lineNumber);
+        String lineText = document.getText(new TextRange(lineStart, lineEnd));
+
+        int index = 0;
+        while (index < lineText.length()) {
+            char ch = lineText.charAt(index);
+            if (ch != ' ' && ch != '\t') {
+                break;
+            }
+            index++;
+        }
+        return lineText.substring(0, index);
     }
 
     @Nullable
