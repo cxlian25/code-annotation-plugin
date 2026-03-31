@@ -1,19 +1,19 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
   <id>com.example.code-annotation-plugin</id>
-  <name>Code Annotation Plugins</name>
+  <name>代码注释插件</name>
   <vendor email="cxlian25@foxmail.com">cxlian</vendor>
 
   <description><![CDATA[
-    A code annotation assistant panel on the right side of the IDE.
-    This version provides a ToolWindow skeleton with clickable buttons for further business logic.
+    IDE 右侧的代码注释助手面板。
+    当前版本提供可点击按钮的 ToolWindow 基础能力。
   ]]></description>
 
   <depends>com.intellij.modules.platform</depends>
   <depends>com.intellij.modules.java</depends>
 
   <extensions defaultExtensionNs="com.intellij">
-    <toolWindow id="Code Annotation"
+    <toolWindow id="代码注释"
                 anchor="right"
                 icon="/META-INF/pluginIcon.svg"
                 factoryClass="com.example.codeannotationplugin.CodeAnnotationToolWindowFactory"
@@ -23,8 +23,8 @@
   <actions>
     <action id="OpenCodeAnnotationToolWindow"
             class="com.example.codeannotationplugin.OpenCodeAnnotationToolWindowAction"
-            text="Open Code Annotation Panel"
-            description="Open the Code Annotation tool window">
+            text="打开代码注释面板"
+            description="打开代码注释工具窗口">
       <add-to-group group-id="ToolsMenu" anchor="first"/>
     </action>
   </actions>

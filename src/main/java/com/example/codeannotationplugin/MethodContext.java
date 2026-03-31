@@ -25,6 +25,8 @@ public final class MethodContext {
     private final int selectionEndOffset;
     private final int selectionStartLine;
     private final int selectionEndLine;
+    private final int methodStartOffset;
+    private final int methodEndOffset;
 
     public MethodContext(
             @NotNull String language,
@@ -43,7 +45,9 @@ public final class MethodContext {
             int selectionStartOffset,
             int selectionEndOffset,
             int selectionStartLine,
-            int selectionEndLine
+            int selectionEndLine,
+            int methodStartOffset,
+            int methodEndOffset
     ) {
         this.language = language;
         this.filePath = filePath;
@@ -62,6 +66,8 @@ public final class MethodContext {
         this.selectionEndOffset = selectionEndOffset;
         this.selectionStartLine = selectionStartLine;
         this.selectionEndLine = selectionEndLine;
+        this.methodStartOffset = methodStartOffset;
+        this.methodEndOffset = methodEndOffset;
     }
 
     public String getLanguage() {
@@ -130,5 +136,13 @@ public final class MethodContext {
 
     public int getSelectionEndLine() {
         return selectionEndLine;
+    }
+
+    public int getMethodStartOffset() {
+        return methodStartOffset;
+    }
+
+    public int getMethodEndOffset() {
+        return methodEndOffset;
     }
 }

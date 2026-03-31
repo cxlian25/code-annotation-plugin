@@ -53,6 +53,9 @@ public final class MethodContextExtractor {
         }
 
         TextRange methodRange = method.getTextRange();
+        int methodStartOffset = clampOffset(document, methodRange.getStartOffset());
+        int methodEndOffset = clampOffsetInclusive(document, methodRange.getEndOffset());
+
         int normalizedStart;
         int normalizedEnd;
 
@@ -60,8 +63,8 @@ public final class MethodContextExtractor {
             normalizedStart = Math.min(selectionStart, selectionEnd);
             normalizedEnd = Math.max(selectionStart, selectionEnd);
         } else {
-            normalizedStart = methodRange.getStartOffset();
-            normalizedEnd = methodRange.getEndOffset();
+            normalizedStart = methodStartOffset;
+            normalizedEnd = methodEndOffset;
         }
 
         normalizedStart = clampOffset(document, normalizedStart);
@@ -82,6 +85,7 @@ public final class MethodContextExtractor {
 
         String filePath = psiFile.getVirtualFile() == null ? psiFile.getName() : psiFile.getVirtualFile().getPath();
         String language = psiFile.getLanguage().getID();
+
         PsiClass containingClass = PsiTreeUtil.getParentOfType(method, PsiClass.class);
         String className = containingClass == null ? "<TopLevel>" : containingClass.getQualifiedName();
         if (className == null || className.isBlank()) {
@@ -134,7 +138,9 @@ public final class MethodContextExtractor {
                 normalizedStart,
                 normalizedEnd,
                 startLine,
-                endLine
+                endLine,
+                methodStartOffset,
+                methodEndOffset
         );
 
         return ExtractionResult.success(context);

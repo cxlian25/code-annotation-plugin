@@ -5,9 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="49b2f4c4-452d-41ac-a4d2-1a8499548648" name="更改" comment="feat:基本功能">
-      <change afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/SelectCameWordsAction.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/CodeAnnotationToolWindowPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/CodeAnnotationToolWindowPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/JsonUtil.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/JsonUtil.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/MethodContext.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/MethodContext.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/MethodContextExtractor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/MethodContextExtractor.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/OpenCodeAnnotationToolWindowAction.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/OpenCodeAnnotationToolWindowAction.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/META-INF/plugin.xml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/META-INF/plugin.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -50,6 +54,19 @@
     </option>
   </component>
   <component name="Git.Settings">
+    <excluded-from-favorite>
+      <branch-storage>
+        <map>
+          <entry type="REMOTE">
+            <value>
+              <list>
+                <branch-info repo="$PROJECT_DIR$" source="origin/master" />
+              </list>
+            </value>
+          </entry>
+        </map>
+      </branch-storage>
+    </excluded-from-favorite>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
@@ -99,7 +116,7 @@
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "正在合并 main",
+    "git-widget-placeholder": "main",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "X:/MVC+DDD/code-annotation-plugin",
     "node.js.detected.package.eslint": "true",
@@ -127,6 +144,7 @@
       <workItem from="1774941277318" duration="31000" />
       <workItem from="1774941327605" duration="9650000" />
       <workItem from="1774966036971" duration="37000" />
+      <workItem from="1774966088410" duration="3026000" />
     </task>
     <task id="LOCAL-00001" summary="feat:基本功能">
       <option name="closed" value="true" />
@@ -144,7 +162,15 @@
       <option name="project" value="LOCAL" />
       <updated>1774964534645</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="feat:基本功能">
+      <option name="closed" value="true" />
+      <created>1774966118971</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1774966118971</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -155,7 +181,19 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="main" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
           </value>
         </entry>
       </map>
@@ -170,7 +208,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/CodeAnnotationToolWindowPanel.java</url>
-          <line>96</line>
+          <line>123</line>
           <option name="timeStamp" value="2" />
         </line-breakpoint>
       </breakpoints>

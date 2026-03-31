@@ -8,7 +8,7 @@ import org.jetbrains.annotations.NotNull;
 
 public class OpenCodeAnnotationToolWindowAction extends AnAction {
 
-    private static final String TOOL_WINDOW_ID = "Code Annotation";
+    private static final String TOOL_WINDOW_ID = "代码注释";
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
