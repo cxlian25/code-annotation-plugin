@@ -33,6 +33,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.Timer;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -53,6 +54,7 @@ import java.net.http.HttpTimeoutException;
 public class CodeAnnotationToolWindowPanel {
 
     private static final String GENERATE_ENDPOINT_PATH = "/api/v1/annotation/generate";
+    private static final int BALLOON_HIDE_DELAY_MS = 350;
 
     private final Project project;
     private final BackendClient backendClient;
@@ -378,6 +380,7 @@ public class CodeAnnotationToolWindowPanel {
             @Override
             public void mouseExited(MouseEvent event) {
                 pending.isMouseInsidePreview = false;
+                scheduleBalloonHideOnLeave(pending);
             }
         };
 
@@ -402,6 +405,7 @@ public class CodeAnnotationToolWindowPanel {
         int end = pending.commentRangeMarker.getEndOffset();
         if (hoverOffset < start || hoverOffset > end) {
             pending.isMouseInsidePreview = false;
+            scheduleBalloonHideOnLeave(pending);
             return;
         }
 
@@ -409,6 +413,7 @@ public class CodeAnnotationToolWindowPanel {
             return;
         }
         pending.isMouseInsidePreview = true;
+        cancelBalloonHideTimer(pending);
 
         ApplicationManager.getApplication().invokeLater(() -> {
             if (pendingComment != pending || !pending.commentRangeMarker.isValid()) {
@@ -419,6 +424,31 @@ public class CodeAnnotationToolWindowPanel {
             }
             pending.balloon = showDecisionBalloon(pending.editor, pending.commentRangeMarker);
         });
+    }
+
+    private void scheduleBalloonHideOnLeave(@NotNull PendingComment pending) {
+        cancelBalloonHideTimer(pending);
+        Timer timer = new Timer(BALLOON_HIDE_DELAY_MS, e -> {
+            if (pendingComment != pending) {
+                return;
+            }
+            if (pending.isMouseInsidePreview) {
+                return;
+            }
+            if (pending.balloon != null && !pending.balloon.isDisposed()) {
+                pending.balloon.hide();
+            }
+        });
+        timer.setRepeats(false);
+        timer.start();
+        pending.hideBalloonTimer = timer;
+    }
+
+    private void cancelBalloonHideTimer(@NotNull PendingComment pending) {
+        if (pending.hideBalloonTimer != null) {
+            pending.hideBalloonTimer.stop();
+            pending.hideBalloonTimer = null;
+        }
     }
 
     @Nullable
@@ -516,6 +546,7 @@ public class CodeAnnotationToolWindowPanel {
     }
 
     private void clearPendingVisuals(@NotNull PendingComment pending) {
+        cancelBalloonHideTimer(pending);
         if (pending.highlighter != null) {
             pending.editor.getMarkupModel().removeHighlighter(pending.highlighter);
         }
@@ -580,6 +611,8 @@ public class CodeAnnotationToolWindowPanel {
         private MouseMotionListener hoverMotionListener;
         @Nullable
         private MouseListener hoverMouseListener;
+        @Nullable
+        private Timer hideBalloonTimer;
         private boolean isMouseInsidePreview;
         private final String baselineSignature;
         private final String baselineMethodText;
@@ -600,6 +633,7 @@ public class CodeAnnotationToolWindowPanel {
             this.methodRangeMarker = methodRangeMarker;
             this.highlighter = highlighter;
             this.balloon = balloon;
+            this.hideBalloonTimer = null;
             this.isMouseInsidePreview = false;
             this.baselineSignature = baselineSignature;
             this.baselineMethodText = baselineMethodText;
