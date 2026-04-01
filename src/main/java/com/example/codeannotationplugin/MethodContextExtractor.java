@@ -84,6 +84,79 @@ public final class MethodContextExtractor {
         int startLine = toLineNumber(document, normalizedStart);
         int endLine = toLineNumber(document, Math.max(normalizedStart, normalizedEnd - 1));
 
+        MethodContext context = buildMethodContext(
+                document,
+                psiFile,
+                method,
+                selectedText,
+                hasSelection,
+                normalizedStart,
+                normalizedEnd,
+                startLine,
+                endLine
+        );
+
+        return ExtractionResult.success(context);
+    }
+
+    public static BatchExtractionResult extractAllInCurrentFile(@NotNull Project project) {
+        Editor editor = FileEditorManager.getInstance(project).getSelectedTextEditor();
+        if (editor == null) {
+            return BatchExtractionResult.failure("No active editor found.");
+        }
+
+        Document document = editor.getDocument();
+        PsiFile psiFile = PsiDocumentManager.getInstance(project).getPsiFile(document);
+        if (psiFile == null) {
+            return BatchExtractionResult.failure("Cannot resolve PSI file from the current editor.");
+        }
+
+        Collection<PsiMethod> allMethods = PsiTreeUtil.findChildrenOfType(psiFile, PsiMethod.class);
+        if (allMethods.isEmpty()) {
+            return BatchExtractionResult.failure("No Java methods found in current file.");
+        }
+
+        List<PsiMethod> sortedMethods = new ArrayList<>(allMethods);
+        sortedMethods.sort(Comparator.comparingInt(method -> method.getTextRange().getStartOffset()));
+
+        List<MethodContext> contexts = new ArrayList<>(sortedMethods.size());
+        for (PsiMethod method : sortedMethods) {
+            TextRange methodRange = method.getTextRange();
+            int methodStartOffset = clampOffset(document, methodRange.getStartOffset());
+            int methodEndOffset = clampOffsetInclusive(document, methodRange.getEndOffset());
+            int startLine = toLineNumber(document, methodStartOffset);
+            int endLine = toLineNumber(document, Math.max(methodStartOffset, methodEndOffset - 1));
+
+            MethodContext context = buildMethodContext(
+                    document,
+                    psiFile,
+                    method,
+                    method.getText(),
+                    false,
+                    methodStartOffset,
+                    methodEndOffset,
+                    startLine,
+                    endLine
+            );
+            contexts.add(context);
+        }
+
+        return BatchExtractionResult.success(contexts);
+    }
+
+    @NotNull
+    private static MethodContext buildMethodContext(
+            @NotNull Document document,
+            @NotNull PsiFile psiFile,
+            @NotNull PsiMethod method,
+            @NotNull String selectedText,
+            boolean hasSelection,
+            int normalizedStart,
+            int normalizedEnd,
+            int startLine,
+            int endLine
+    ) {
+
         String filePath = psiFile.getVirtualFile() == null ? psiFile.getName() : psiFile.getVirtualFile().getPath();
         String language = psiFile.getLanguage().getID();
 
@@ -129,8 +202,11 @@ public final class MethodContextExtractor {
             docCommentEndOffset = clampOffsetInclusive(document, docCommentRange.getEndOffset());
         }
         String methodSignature = buildMethodSignature(method, returnType);
+        TextRange methodRange = method.getTextRange();
+        int methodStartOffset = clampOffset(document, methodRange.getStartOffset());
+        int methodEndOffset = clampOffsetInclusive(document, methodRange.getEndOffset());
 
-        MethodContext context = new MethodContext(
+        return new MethodContext(
                 language,
                 filePath,
                 className,
@@ -153,8 +229,6 @@ public final class MethodContextExtractor {
                 methodStartOffset,
                 methodEndOffset
         );
-
-        return ExtractionResult.success(context);
     }
 
     @Nullable
@@ -286,6 +360,39 @@ public final class MethodContextExtractor {
         @Nullable
         public MethodContext getMethodContext() {
             return methodContext;
+        }
+
+        @Nullable
+        public String getErrorMessage() {
+            return errorMessage;
+        }
+    }
+
+    public static final class BatchExtractionResult {
+
+        private final List<MethodContext> methodContexts;
+        private final String errorMessage;
+
+        private BatchExtractionResult(@Nullable List<MethodContext> methodContexts, @Nullable String errorMessage) {
+            this.methodContexts = methodContexts == null ? null : List.copyOf(methodContexts);
+            this.errorMessage = errorMessage;
+        }
+
+        public static BatchExtractionResult success(@NotNull List<MethodContext> methodContexts) {
+            return new BatchExtractionResult(methodContexts, null);
+        }
+
+        public static BatchExtractionResult failure(@NotNull String errorMessage) {
+            return new BatchExtractionResult(null, errorMessage);
+        }
+
+        public boolean isSuccess() {
+            return methodContexts != null;
+        }
+
+        @Nullable
+        public List<MethodContext> getMethodContexts() {
+            return methodContexts;
         }
 
         @Nullable

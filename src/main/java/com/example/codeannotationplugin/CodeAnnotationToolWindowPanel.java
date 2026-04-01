@@ -48,6 +48,9 @@ import java.awt.event.MouseMotionListener;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.http.HttpTimeoutException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 
 // 面板
@@ -92,18 +95,22 @@ public class CodeAnnotationToolWindowPanel {
         JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 8, 8));
         JButton generateButton = new JButton("生成注释");
         JButton detailLevelButton = new JButton(buildDetailLevelButtonText());
+        JButton annotateAllButton = new JButton("一键注释全文件");
 
         buttonPanel.add(generateButton);
         buttonPanel.add(detailLevelButton);
 
         generateButton.addActionListener(e -> runGenerateFlow());
         detailLevelButton.addActionListener(e -> toggleCommentDetailLevel(detailLevelButton));
+        annotateAllButton.addActionListener(e -> runGenerateAllFlow());
 
         JPanel topContainer = new JPanel();
         topContainer.setLayout(new BoxLayout(topContainer, BoxLayout.Y_AXIS));
         topContainer.add(headerPanel);
         topContainer.add(Box.createRigidArea(new Dimension(0, 10)));
         topContainer.add(buttonPanel);
+        topContainer.add(Box.createRigidArea(new Dimension(0, 8)));
+        topContainer.add(annotateAllButton);
 
         this.outputArea = new JTextArea();
         this.outputArea.setEditable(false);
@@ -120,6 +127,7 @@ public class CodeAnnotationToolWindowPanel {
         appendOutput("面板已初始化。");
         appendOutput("1) 请将光标放在 Java 方法内，或选中一段代码。");
         appendOutput("2) 点击“代码风格”切换简洁/详细，再点击“生成注释”。");
+        appendOutput("3) 点击“一键注释全文件”可批量处理当前页面所有方法。");
     }
 
     public JPanel getContent() {
@@ -185,6 +193,88 @@ public class CodeAnnotationToolWindowPanel {
         });
     }
 
+    private void runGenerateAllFlow() {
+        if (hasActivePendingComment()) {
+            appendOutputLater("[提示] 当前有一条临时注释，请先点击“保留”或“放弃”。");
+            return;
+        }
+
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, "全文件一键注释", false) {
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                indicator.setText("正在提取当前文件方法列表...");
+
+                MethodContextExtractor.BatchExtractionResult extractionResult =
+                        ReadAction.compute(() -> MethodContextExtractor.extractAllInCurrentFile(project));
+                if (!extractionResult.isSuccess() || extractionResult.getMethodContexts() == null) {
+                    String errorMessage = extractionResult.getErrorMessage() == null
+                            ? "未知的方法提取错误。"
+                            : extractionResult.getErrorMessage();
+                    appendOutputLater("[错误] " + errorMessage);
+                    return;
+                }
+
+                List<MethodContext> allMethods = extractionResult.getMethodContexts();
+                if (allMethods.isEmpty()) {
+                    appendOutputLater("[提示] 当前文件没有可注释的方法。");
+                    return;
+                }
+
+                String endpoint = backendBaseUrl + GENERATE_ENDPOINT_PATH;
+                List<GeneratedCommentItem> generatedItems = new ArrayList<>();
+                List<String> failedMethods = new ArrayList<>();
+
+                for (int i = 0; i < allMethods.size(); i++) {
+                    MethodContext context = allMethods.get(i);
+                    indicator.setFraction((i + 1d) / allMethods.size());
+                    indicator.setText("正在生成注释 (" + (i + 1) + "/" + allMethods.size() + "): " + context.getMethodName());
+                    String requestJson = RequestPayloadBuilder.buildGenerateRequest(context, selectedDetailLevel.name());
+                    try {
+                        BackendClient.HttpResult response = backendClient.postJson(endpoint, requestJson);
+                        String generatedComment = JsonUtil.extractTopLevelStringField(response.getBody(), "generatedComment");
+                        if (generatedComment == null || generatedComment.isBlank()) {
+                            failedMethods.add(context.getMethodName() + "(返回为空)");
+                            continue;
+                        }
+                        generatedItems.add(new GeneratedCommentItem(context, generatedComment));
+                    } catch (HttpTimeoutException timeoutException) {
+                        failedMethods.add(context.getMethodName() + "(超时)");
+                    } catch (ConnectException connectException) {
+                        failedMethods.add(context.getMethodName() + "(连接失败)");
+                        break;
+                    } catch (IOException ioException) {
+                        failedMethods.add(context.getMethodName() + "(IO异常)");
+                    } catch (InterruptedException interruptedException) {
+                        Thread.currentThread().interrupt();
+                        appendOutputLater("[错误] 请求被中断。");
+                        return;
+                    } catch (Exception exception) {
+                        failedMethods.add(context.getMethodName() + "(未知异常)");
+                    }
+                }
+
+                if (generatedItems.isEmpty()) {
+                    appendOutputLater("[错误] 一键注释失败，未生成任何有效注释。");
+                    if (!failedMethods.isEmpty()) {
+                        appendOutputLater("[失败方法] " + String.join("，", failedMethods));
+                    }
+                    return;
+                }
+
+                ApplicationManager.getApplication().invokeLater(() ->
+                        WriteCommandAction.runWriteCommandAction(project, "一键注释全文件", null, () -> {
+                            int appliedCount = applyBatchComments(generatedItems);
+                            int failedCount = allMethods.size() - appliedCount;
+                            appendOutputLater("一键注释完成：成功 " + appliedCount + " 个，失败 " + failedCount + " 个。");
+                            if (!failedMethods.isEmpty()) {
+                                appendOutputLater("[失败方法] " + String.join("，", failedMethods));
+                            }
+                        })
+                );
+            }
+        });
+    }
+
     private boolean hasActivePendingComment() {
         if (pendingComment == null) {
             return false;
@@ -218,6 +308,80 @@ public class CodeAnnotationToolWindowPanel {
         }
 
         Document document = editor.getDocument();
+        AppliedComment appliedComment = applyCommentToDocument(document, context, generatedComment);
+        if (appliedComment == null) {
+            return;
+        }
+
+        RangeMarker commentMarker = document.createRangeMarker(
+                appliedComment.commentStartOffset,
+                appliedComment.commentEndOffset
+        );
+        commentMarker.setGreedyToLeft(true);
+        commentMarker.setGreedyToRight(true);
+
+        RangeMarker methodMarker = document.createRangeMarker(
+                appliedComment.methodStartOffset,
+                appliedComment.methodEndOffset
+        );
+        methodMarker.setGreedyToLeft(true);
+        methodMarker.setGreedyToRight(true);
+
+        RangeHighlighter highlighter = addPreviewHighlighter(editor, commentMarker);
+        Balloon balloon = showDecisionBalloon(editor, commentMarker);
+
+        PendingComment newPendingComment = new PendingComment(
+                editor,
+                commentMarker,
+                methodMarker,
+                highlighter,
+                balloon,
+                context.getMethodSignature(),
+                context.getMethodText(),
+                context.getMethodName()
+        );
+        registerHoverRestore(newPendingComment);
+        pendingComment = newPendingComment;
+    }
+
+    private int applyBatchComments(@NotNull List<GeneratedCommentItem> generatedItems) {
+        Editor editor = FileEditorManager.getInstance(project).getSelectedTextEditor();
+        if (editor == null) {
+            appendOutputLater("[错误] 未找到当前编辑器，无法执行一键注释。");
+            return 0;
+        }
+
+        Document document = editor.getDocument();
+        List<GeneratedCommentItem> sortedItems = new ArrayList<>(generatedItems);
+        sortedItems.sort(Comparator.comparingInt((GeneratedCommentItem item) -> item.methodContext.getMethodStartOffset()).reversed());
+
+        int appliedCount = 0;
+        for (GeneratedCommentItem item : sortedItems) {
+            AppliedComment appliedComment = applyCommentToDocument(document, item.methodContext, item.generatedComment);
+            if (appliedComment == null) {
+                continue;
+            }
+            RangeMarker methodMarker = document.createRangeMarker(
+                    appliedComment.methodStartOffset,
+                    appliedComment.methodEndOffset
+            );
+            methodMarker.setGreedyToLeft(true);
+            methodMarker.setGreedyToRight(true);
+
+            methodChangeMonitor.watchMethod(
+                    editor,
+                    methodMarker,
+                    item.methodContext.getMethodSignature(),
+                    item.methodContext.getMethodText(),
+                    item.methodContext.getMethodName()
+            );
+            appliedCount++;
+        }
+        return appliedCount;
+    }
+
+    @Nullable
+    private AppliedComment applyCommentToDocument(@NotNull Document document, @NotNull MethodContext context, @NotNull String generatedComment) {
         int textLength = document.getTextLength();
         int safeMethodOffset = Math.max(0, Math.min(context.getMethodStartOffset(), Math.max(0, textLength - 1)));
         int methodLine = textLength == 0 ? 0 : document.getLineNumber(safeMethodOffset);
@@ -237,11 +401,10 @@ public class CodeAnnotationToolWindowPanel {
         }
 
         int insertOffset = replaceStartOffset;
-
         String previewText = toPreviewCommentText(generatedComment, document, methodLineStartOffset);
         if (previewText.isBlank()) {
             appendOutputLater("[错误] 生成注释为空，未执行插入。");
-            return;
+            return null;
         }
 
         int replacedLength = Math.max(0, replaceEndOffset - replaceStartOffset);
@@ -252,35 +415,13 @@ public class CodeAnnotationToolWindowPanel {
         }
 
         int commentEndOffset = insertOffset + previewText.length();
-        RangeMarker commentMarker = document.createRangeMarker(insertOffset, commentEndOffset);
-        commentMarker.setGreedyToLeft(true);
-        commentMarker.setGreedyToRight(true);
-
         int delta = previewText.length() - replacedLength;
         int methodStartAfterInsert = context.getMethodStartOffset() + delta;
         int methodEndAfterInsert = context.getMethodEndOffset() + delta;
         methodStartAfterInsert = Math.max(0, Math.min(methodStartAfterInsert, document.getTextLength()));
         methodEndAfterInsert = Math.max(methodStartAfterInsert, Math.min(methodEndAfterInsert, document.getTextLength()));
 
-        RangeMarker methodMarker = document.createRangeMarker(methodStartAfterInsert, methodEndAfterInsert);
-        methodMarker.setGreedyToLeft(true);
-        methodMarker.setGreedyToRight(true);
-
-        RangeHighlighter highlighter = addPreviewHighlighter(editor, commentMarker);
-        Balloon balloon = showDecisionBalloon(editor, commentMarker);
-
-        PendingComment newPendingComment = new PendingComment(
-                editor,
-                commentMarker,
-                methodMarker,
-                highlighter,
-                balloon,
-                context.getMethodSignature(),
-                context.getMethodText(),
-                context.getMethodName()
-        );
-        registerHoverRestore(newPendingComment);
-        pendingComment = newPendingComment;
+        return new AppliedComment(insertOffset, commentEndOffset, methodStartAfterInsert, methodEndAfterInsert);
     }
 
     @NotNull
@@ -596,6 +737,30 @@ public class CodeAnnotationToolWindowPanel {
         @NotNull
         public String getDisplayText() {
             return displayText;
+        }
+    }
+
+    private static final class GeneratedCommentItem {
+        private final MethodContext methodContext;
+        private final String generatedComment;
+
+        private GeneratedCommentItem(@NotNull MethodContext methodContext, @NotNull String generatedComment) {
+            this.methodContext = methodContext;
+            this.generatedComment = generatedComment;
+        }
+    }
+
+    private static final class AppliedComment {
+        private final int commentStartOffset;
+        private final int commentEndOffset;
+        private final int methodStartOffset;
+        private final int methodEndOffset;
+
+        private AppliedComment(int commentStartOffset, int commentEndOffset, int methodStartOffset, int methodEndOffset) {
+            this.commentStartOffset = commentStartOffset;
+            this.commentEndOffset = commentEndOffset;
+            this.methodStartOffset = methodStartOffset;
+            this.methodEndOffset = methodEndOffset;
         }
     }
 
