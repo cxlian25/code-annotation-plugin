@@ -10,15 +10,17 @@ public final class RequestPayloadBuilder {
     }
 
     @NotNull
-    public static String buildGenerateRequest(@NotNull MethodContext context, @NotNull String intent) {
+    public static String buildGenerateRequest(@NotNull MethodContext context, @NotNull String commentDetailLevel) {
         String targetCode = resolveTargetCode(context);
-        String contextText = buildContextText(context, intent);
+        String contextText = buildContextText(context);
 
         StringBuilder builder = new StringBuilder();
         builder.append('{');
         appendStringField(builder, "targetCode", targetCode);
         builder.append(',');
         appendStringField(builder, "context", contextText);
+        builder.append(',');
+        appendStringField(builder, "commentDetailLevel", commentDetailLevel);
         builder.append('}');
         return builder.toString();
     }
@@ -32,9 +34,8 @@ public final class RequestPayloadBuilder {
     }
 
     @NotNull
-    private static String buildContextText(@NotNull MethodContext context, @NotNull String intent) {
+    private static String buildContextText(@NotNull MethodContext context) {
         StringBuilder builder = new StringBuilder(512);
-        appendLine(builder, "intent", intent);
         appendLine(builder, "language", context.getLanguage());
         appendLine(builder, "filePath", context.getFilePath());
         appendLine(builder, "className", context.getClassName());

@@ -25,6 +25,8 @@ public final class MethodContext {
     private final int selectionEndOffset;
     private final int selectionStartLine;
     private final int selectionEndLine;
+    private final int docCommentStartOffset;
+    private final int docCommentEndOffset;
     private final int methodStartOffset;
     private final int methodEndOffset;
 
@@ -46,6 +48,8 @@ public final class MethodContext {
             int selectionEndOffset,
             int selectionStartLine,
             int selectionEndLine,
+            int docCommentStartOffset,
+            int docCommentEndOffset,
             int methodStartOffset,
             int methodEndOffset
     ) {
@@ -66,6 +70,8 @@ public final class MethodContext {
         this.selectionEndOffset = selectionEndOffset;
         this.selectionStartLine = selectionStartLine;
         this.selectionEndLine = selectionEndLine;
+        this.docCommentStartOffset = docCommentStartOffset;
+        this.docCommentEndOffset = docCommentEndOffset;
         this.methodStartOffset = methodStartOffset;
         this.methodEndOffset = methodEndOffset;
     }
@@ -136,6 +142,18 @@ public final class MethodContext {
 
     public int getSelectionEndLine() {
         return selectionEndLine;
+    }
+
+    public int getDocCommentStartOffset() {
+        return docCommentStartOffset;
+    }
+
+    public int getDocCommentEndOffset() {
+        return docCommentEndOffset;
+    }
+
+    public boolean hasDocCommentRange() {
+        return docCommentStartOffset >= 0 && docCommentEndOffset > docCommentStartOffset;
     }
 
     public int getMethodStartOffset() {

@@ -15,6 +15,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiParameter;
 import com.intellij.psi.PsiType;
+import com.intellij.psi.javadoc.PsiDocComment;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -118,7 +119,15 @@ public final class MethodContextExtractor {
             annotations.add(qualifiedName == null ? annotation.getText() : qualifiedName);
         }
 
-        String docComment = method.getDocComment() == null ? "" : method.getDocComment().getText();
+        PsiDocComment methodDocComment = method.getDocComment();
+        String docComment = methodDocComment == null ? "" : methodDocComment.getText();
+        int docCommentStartOffset = -1;
+        int docCommentEndOffset = -1;
+        if (methodDocComment != null) {
+            TextRange docCommentRange = methodDocComment.getTextRange();
+            docCommentStartOffset = clampOffsetInclusive(document, docCommentRange.getStartOffset());
+            docCommentEndOffset = clampOffsetInclusive(document, docCommentRange.getEndOffset());
+        }
         String methodSignature = buildMethodSignature(method, returnType);
 
         MethodContext context = new MethodContext(
@@ -139,6 +148,8 @@ public final class MethodContextExtractor {
                 normalizedEnd,
                 startLine,
                 endLine,
+                docCommentStartOffset,
+                docCommentEndOffset,
                 methodStartOffset,
                 methodEndOffset
         );

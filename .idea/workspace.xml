@@ -4,9 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="49b2f4c4-452d-41ac-a4d2-1a8499548648" name="更改" comment="fix:修正格式问题">
+    <list default="true" id="49b2f4c4-452d-41ac-a4d2-1a8499548648" name="更改" comment="fix:修正偏移量">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/CodeAnnotationToolWindowPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/CodeAnnotationToolWindowPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/MethodContext.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/MethodContext.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/MethodContextExtractor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/MethodContextExtractor.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/RequestPayloadBuilder.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/RequestPayloadBuilder.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -140,7 +143,7 @@
       <workItem from="1774941327605" duration="9650000" />
       <workItem from="1774966036971" duration="37000" />
       <workItem from="1774966088410" duration="6902000" />
-      <workItem from="1775018127129" duration="4953000" />
+      <workItem from="1775018127129" duration="8462000" />
     </task>
     <task id="LOCAL-00001" summary="feat:基本功能">
       <option name="closed" value="true" />
@@ -182,7 +185,15 @@
       <option name="project" value="LOCAL" />
       <updated>1774973018632</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="fix:修正偏移量">
+      <option name="closed" value="true" />
+      <created>1775039061239</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1775039061240</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -215,20 +226,26 @@
     <MESSAGE value="feat:基本功能" />
     <MESSAGE value="feat:自动添加" />
     <MESSAGE value="fix:修正格式问题" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix:修正格式问题" />
+    <MESSAGE value="fix:修正偏移量" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix:修正偏移量" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/CodeAnnotationToolWindowPanel.java</url>
-          <line>179</line>
+          <line>198</line>
           <option name="timeStamp" value="3" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/CodeAnnotationToolWindowPanel.java</url>
-          <line>192</line>
+          <line>211</line>
           <option name="timeStamp" value="4" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/BackendClient.java</url>
+          <line>26</line>
+          <option name="timeStamp" value="5" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

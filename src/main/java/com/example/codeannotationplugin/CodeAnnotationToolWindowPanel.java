@@ -39,15 +39,20 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.awt.Point;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.event.MouseMotionListener;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.http.HttpTimeoutException;
 
+
+// 面板
 public class CodeAnnotationToolWindowPanel {
 
     private static final String GENERATE_ENDPOINT_PATH = "/api/v1/annotation/generate";
-    private static final String GENERATE_INTENT = "generate_comment";
-    private static final String UPDATE_INTENT = "update_comment";
 
     private final Project project;
     private final BackendClient backendClient;
@@ -59,6 +64,7 @@ public class CodeAnnotationToolWindowPanel {
 
     @Nullable
     private PendingComment pendingComment;
+    private CommentDetailLevel selectedDetailLevel = CommentDetailLevel.CONCISE;
 
     public CodeAnnotationToolWindowPanel(Project project) {
         this.project = project;
@@ -83,13 +89,13 @@ public class CodeAnnotationToolWindowPanel {
 
         JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 8, 8));
         JButton generateButton = new JButton("生成注释");
-        JButton updateButton = new JButton("更新注释");
+        JButton detailLevelButton = new JButton(buildDetailLevelButtonText());
 
         buttonPanel.add(generateButton);
-        buttonPanel.add(updateButton);
+        buttonPanel.add(detailLevelButton);
 
-        generateButton.addActionListener(e -> runGenerateFlow(GENERATE_INTENT));
-        updateButton.addActionListener(e -> runGenerateFlow(UPDATE_INTENT));
+        generateButton.addActionListener(e -> runGenerateFlow());
+        detailLevelButton.addActionListener(e -> toggleCommentDetailLevel(detailLevelButton));
 
         JPanel topContainer = new JPanel();
         topContainer.setLayout(new BoxLayout(topContainer, BoxLayout.Y_AXIS));
@@ -111,14 +117,27 @@ public class CodeAnnotationToolWindowPanel {
 
         appendOutput("面板已初始化。");
         appendOutput("1) 请将光标放在 Java 方法内，或选中一段代码。");
-        appendOutput("2) 点击“生成注释”或“更新注释”。");
+        appendOutput("2) 点击“代码风格”切换简洁/详细，再点击“生成注释”。");
     }
 
     public JPanel getContent() {
         return rootPanel;
     }
 
-    private void runGenerateFlow(@NotNull String intent) {
+    @NotNull
+    private String buildDetailLevelButtonText() {
+        return "代码风格：" + selectedDetailLevel.getDisplayText();
+    }
+
+    private void toggleCommentDetailLevel(@NotNull JButton detailLevelButton) {
+        selectedDetailLevel = selectedDetailLevel == CommentDetailLevel.CONCISE
+                ? CommentDetailLevel.DETAILED
+                : CommentDetailLevel.CONCISE;
+        detailLevelButton.setText(buildDetailLevelButtonText());
+        appendOutput("已切换代码风格：" + selectedDetailLevel.getDisplayText());
+    }
+
+    private void runGenerateFlow() {
         if (hasActivePendingComment()) {
             appendOutputLater("[提示] 当前有一条临时注释，请先点击“保留”或“放弃”。");
             return;
@@ -141,7 +160,7 @@ public class CodeAnnotationToolWindowPanel {
                 }
 
                 MethodContext context = extractionResult.getMethodContext();
-                String requestJson = RequestPayloadBuilder.buildGenerateRequest(context, intent);
+                String requestJson = RequestPayloadBuilder.buildGenerateRequest(context, selectedDetailLevel.name());
                 String endpoint = backendBaseUrl + GENERATE_ENDPOINT_PATH;
 
                 try {
@@ -200,22 +219,44 @@ public class CodeAnnotationToolWindowPanel {
         int textLength = document.getTextLength();
         int safeMethodOffset = Math.max(0, Math.min(context.getMethodStartOffset(), Math.max(0, textLength - 1)));
         int methodLine = textLength == 0 ? 0 : document.getLineNumber(safeMethodOffset);
-        int insertOffset = document.getLineStartOffset(methodLine);
+        int methodLineStartOffset = document.getLineStartOffset(methodLine);
+        int replaceStartOffset = methodLineStartOffset;
+        int replaceEndOffset = methodLineStartOffset;
 
-        String previewText = toPreviewCommentText(generatedComment, document, insertOffset);
+        if (context.hasDocCommentRange()) {
+            int safeDocStart = Math.max(0, Math.min(context.getDocCommentStartOffset(), document.getTextLength()));
+            int safeDocEnd = Math.max(safeDocStart, Math.min(context.getDocCommentEndOffset(), document.getTextLength()));
+            if (safeDocEnd > safeDocStart) {
+                int docAnchorOffset = Math.max(0, Math.min(safeDocStart, Math.max(0, textLength - 1)));
+                int docStartLine = textLength == 0 ? 0 : document.getLineNumber(docAnchorOffset);
+                replaceStartOffset = document.getLineStartOffset(docStartLine);
+                replaceEndOffset = includeTrailingLineBreak(document, safeDocEnd);
+            }
+        }
+
+        int insertOffset = replaceStartOffset;
+
+        String previewText = toPreviewCommentText(generatedComment, document, methodLineStartOffset);
         if (previewText.isBlank()) {
             appendOutputLater("[错误] 生成注释为空，未执行插入。");
             return;
         }
 
-        document.insertString(insertOffset, previewText);
+        int replacedLength = Math.max(0, replaceEndOffset - replaceStartOffset);
+        if (replacedLength > 0) {
+            document.replaceString(replaceStartOffset, replaceEndOffset, previewText);
+        } else {
+            document.insertString(insertOffset, previewText);
+        }
+
         int commentEndOffset = insertOffset + previewText.length();
         RangeMarker commentMarker = document.createRangeMarker(insertOffset, commentEndOffset);
         commentMarker.setGreedyToLeft(true);
         commentMarker.setGreedyToRight(true);
 
-        int methodStartAfterInsert = context.getMethodStartOffset() + previewText.length();
-        int methodEndAfterInsert = context.getMethodEndOffset() + previewText.length();
+        int delta = previewText.length() - replacedLength;
+        int methodStartAfterInsert = context.getMethodStartOffset() + delta;
+        int methodEndAfterInsert = context.getMethodEndOffset() + delta;
         methodStartAfterInsert = Math.max(0, Math.min(methodStartAfterInsert, document.getTextLength()));
         methodEndAfterInsert = Math.max(methodStartAfterInsert, Math.min(methodEndAfterInsert, document.getTextLength()));
 
@@ -226,7 +267,7 @@ public class CodeAnnotationToolWindowPanel {
         RangeHighlighter highlighter = addPreviewHighlighter(editor, commentMarker);
         Balloon balloon = showDecisionBalloon(editor, commentMarker);
 
-        pendingComment = new PendingComment(
+        PendingComment newPendingComment = new PendingComment(
                 editor,
                 commentMarker,
                 methodMarker,
@@ -236,6 +277,8 @@ public class CodeAnnotationToolWindowPanel {
                 context.getMethodText(),
                 context.getMethodName()
         );
+        registerHoverRestore(newPendingComment);
+        pendingComment = newPendingComment;
     }
 
     @NotNull
@@ -307,6 +350,75 @@ public class CodeAnnotationToolWindowPanel {
             index++;
         }
         return lineText.substring(0, index);
+    }
+
+    private int includeTrailingLineBreak(@NotNull Document document, int offset) {
+        int textLength = document.getTextLength();
+        int safeOffset = Math.max(0, Math.min(offset, textLength));
+        if (safeOffset < textLength && document.getCharsSequence().charAt(safeOffset) == '\n') {
+            return safeOffset + 1;
+        }
+        return safeOffset;
+    }
+
+    private void registerHoverRestore(@NotNull PendingComment pending) {
+        MouseMotionListener motionListener = new MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent event) {
+                tryRestoreDecisionBalloonByHover(pending, event.getPoint());
+            }
+        };
+
+        MouseListener mouseListener = new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent event) {
+                tryRestoreDecisionBalloonByHover(pending, event.getPoint());
+            }
+
+            @Override
+            public void mouseExited(MouseEvent event) {
+                pending.isMouseInsidePreview = false;
+            }
+        };
+
+        pending.editor.getContentComponent().addMouseMotionListener(motionListener);
+        pending.editor.getContentComponent().addMouseListener(mouseListener);
+        pending.hoverMotionListener = motionListener;
+        pending.hoverMouseListener = mouseListener;
+    }
+
+    private void tryRestoreDecisionBalloonByHover(@NotNull PendingComment pending, @NotNull Point hoverPoint) {
+        if (pendingComment != pending) {
+            return;
+        }
+        if (!pending.commentRangeMarker.isValid()) {
+            return;
+        }
+
+        int hoverOffset = pending.editor.logicalPositionToOffset(
+                pending.editor.xyToLogicalPosition(hoverPoint)
+        );
+        int start = pending.commentRangeMarker.getStartOffset();
+        int end = pending.commentRangeMarker.getEndOffset();
+        if (hoverOffset < start || hoverOffset > end) {
+            pending.isMouseInsidePreview = false;
+            return;
+        }
+
+        if (pending.isMouseInsidePreview) {
+            return;
+        }
+        pending.isMouseInsidePreview = true;
+
+        ApplicationManager.getApplication().invokeLater(() -> {
+            if (pendingComment != pending || !pending.commentRangeMarker.isValid()) {
+                return;
+            }
+            if (pending.balloon != null && !pending.balloon.isDisposed()) {
+                pending.balloon.hide();
+            }
+            pending.balloon = showDecisionBalloon(pending.editor, pending.commentRangeMarker);
+        });
     }
 
     @Nullable
@@ -410,6 +522,14 @@ public class CodeAnnotationToolWindowPanel {
         if (pending.balloon != null && !pending.balloon.isDisposed()) {
             pending.balloon.hide();
         }
+        if (pending.hoverMotionListener != null) {
+            pending.editor.getContentComponent().removeMouseMotionListener(pending.hoverMotionListener);
+            pending.hoverMotionListener = null;
+        }
+        if (pending.hoverMouseListener != null) {
+            pending.editor.getContentComponent().removeMouseListener(pending.hoverMouseListener);
+            pending.hoverMouseListener = null;
+        }
     }
 
     private void appendOutput(@NotNull String line) {
@@ -432,6 +552,22 @@ public class CodeAnnotationToolWindowPanel {
         ApplicationManager.getApplication().invokeLater(() -> appendOutput(line));
     }
 
+    private enum CommentDetailLevel {
+        CONCISE("简洁"),
+        DETAILED("详细");
+
+        private final String displayText;
+
+        CommentDetailLevel(@NotNull String displayText) {
+            this.displayText = displayText;
+        }
+
+        @NotNull
+        public String getDisplayText() {
+            return displayText;
+        }
+    }
+
     private static final class PendingComment {
         private final Editor editor;
         private final RangeMarker commentRangeMarker;
@@ -439,7 +575,12 @@ public class CodeAnnotationToolWindowPanel {
         @Nullable
         private final RangeHighlighter highlighter;
         @Nullable
-        private final Balloon balloon;
+        private Balloon balloon;
+        @Nullable
+        private MouseMotionListener hoverMotionListener;
+        @Nullable
+        private MouseListener hoverMouseListener;
+        private boolean isMouseInsidePreview;
         private final String baselineSignature;
         private final String baselineMethodText;
         private final String methodName;
@@ -459,6 +600,7 @@ public class CodeAnnotationToolWindowPanel {
             this.methodRangeMarker = methodRangeMarker;
             this.highlighter = highlighter;
             this.balloon = balloon;
+            this.isMouseInsidePreview = false;
             this.baselineSignature = baselineSignature;
             this.baselineMethodText = baselineMethodText;
             this.methodName = methodName;
