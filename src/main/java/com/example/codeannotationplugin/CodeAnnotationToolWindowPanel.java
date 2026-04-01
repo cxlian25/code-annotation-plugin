@@ -18,8 +18,8 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.popup.Balloon;
-import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.awt.RelativePoint;
 import org.jetbrains.annotations.NotNull;
@@ -52,6 +52,7 @@ public class CodeAnnotationToolWindowPanel {
     private final Project project;
     private final BackendClient backendClient;
     private final String backendBaseUrl;
+    private final MethodChangeMonitor methodChangeMonitor;
 
     private final JPanel rootPanel;
     private final JTextArea outputArea;
@@ -63,6 +64,7 @@ public class CodeAnnotationToolWindowPanel {
         this.project = project;
         this.backendClient = new BackendClient();
         this.backendBaseUrl = PluginConfig.getBackendBaseUrl();
+        this.methodChangeMonitor = new MethodChangeMonitor(project);
 
         this.rootPanel = new JPanel(new BorderLayout());
         this.rootPanel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
@@ -166,7 +168,7 @@ public class CodeAnnotationToolWindowPanel {
         if (pendingComment == null) {
             return false;
         }
-        if (pendingComment.rangeMarker.isValid()) {
+        if (pendingComment.commentRangeMarker.isValid()) {
             return true;
         }
         clearPendingVisuals(pendingComment);
@@ -195,7 +197,11 @@ public class CodeAnnotationToolWindowPanel {
         }
 
         Document document = editor.getDocument();
-        int insertOffset = Math.max(0, Math.min(context.getMethodStartOffset(), document.getTextLength()));
+        int textLength = document.getTextLength();
+        int safeMethodOffset = Math.max(0, Math.min(context.getMethodStartOffset(), Math.max(0, textLength - 1)));
+        int methodLine = textLength == 0 ? 0 : document.getLineNumber(safeMethodOffset);
+        int insertOffset = document.getLineStartOffset(methodLine);
+
         String previewText = toPreviewCommentText(generatedComment, document, insertOffset);
         if (previewText.isBlank()) {
             appendOutputLater("[错误] 生成注释为空，未执行插入。");
@@ -203,14 +209,33 @@ public class CodeAnnotationToolWindowPanel {
         }
 
         document.insertString(insertOffset, previewText);
-        int endOffset = insertOffset + previewText.length();
-        RangeMarker marker = document.createRangeMarker(insertOffset, endOffset);
-        marker.setGreedyToLeft(true);
-        marker.setGreedyToRight(true);
+        int commentEndOffset = insertOffset + previewText.length();
+        RangeMarker commentMarker = document.createRangeMarker(insertOffset, commentEndOffset);
+        commentMarker.setGreedyToLeft(true);
+        commentMarker.setGreedyToRight(true);
 
-        RangeHighlighter highlighter = addPreviewHighlighter(editor, marker);
-        Balloon balloon = showDecisionBalloon(editor, marker);
-        pendingComment = new PendingComment(editor, marker, highlighter, balloon);
+        int methodStartAfterInsert = context.getMethodStartOffset() + previewText.length();
+        int methodEndAfterInsert = context.getMethodEndOffset() + previewText.length();
+        methodStartAfterInsert = Math.max(0, Math.min(methodStartAfterInsert, document.getTextLength()));
+        methodEndAfterInsert = Math.max(methodStartAfterInsert, Math.min(methodEndAfterInsert, document.getTextLength()));
+
+        RangeMarker methodMarker = document.createRangeMarker(methodStartAfterInsert, methodEndAfterInsert);
+        methodMarker.setGreedyToLeft(true);
+        methodMarker.setGreedyToRight(true);
+
+        RangeHighlighter highlighter = addPreviewHighlighter(editor, commentMarker);
+        Balloon balloon = showDecisionBalloon(editor, commentMarker);
+
+        pendingComment = new PendingComment(
+                editor,
+                commentMarker,
+                methodMarker,
+                highlighter,
+                balloon,
+                context.getMethodSignature(),
+                context.getMethodText(),
+                context.getMethodName()
+        );
     }
 
     @NotNull
@@ -255,9 +280,6 @@ public class CodeAnnotationToolWindowPanel {
         }
 
         if (!builder.toString().endsWith("\n")) {
-            builder.append("\n");
-        }
-        if (!builder.toString().endsWith("\n\n")) {
             builder.append("\n");
         }
         return builder.toString();
@@ -346,9 +368,17 @@ public class CodeAnnotationToolWindowPanel {
             return;
         }
 
+        methodChangeMonitor.watchMethod(
+                current.editor,
+                current.methodRangeMarker,
+                current.baselineSignature,
+                current.baselineMethodText,
+                current.methodName
+        );
+
         clearPendingVisuals(current);
         pendingComment = null;
-        appendOutputLater("已保留注释。");
+        appendOutputLater("已保留注释，并开始监控方法变更。");
     }
 
     private void discardPendingComment() {
@@ -358,10 +388,10 @@ public class CodeAnnotationToolWindowPanel {
         }
 
         ApplicationManager.getApplication().invokeLater(() -> WriteCommandAction.runWriteCommandAction(project, "删除临时注释", null, () -> {
-            if (current.rangeMarker.isValid()) {
+            if (current.commentRangeMarker.isValid()) {
                 Document document = current.editor.getDocument();
-                int start = current.rangeMarker.getStartOffset();
-                int end = current.rangeMarker.getEndOffset();
+                int start = current.commentRangeMarker.getStartOffset();
+                int end = current.commentRangeMarker.getEndOffset();
                 if (start >= 0 && end >= start && end <= document.getTextLength()) {
                     document.deleteString(start, end);
                 }
@@ -404,22 +434,34 @@ public class CodeAnnotationToolWindowPanel {
 
     private static final class PendingComment {
         private final Editor editor;
-        private final RangeMarker rangeMarker;
+        private final RangeMarker commentRangeMarker;
+        private final RangeMarker methodRangeMarker;
         @Nullable
         private final RangeHighlighter highlighter;
         @Nullable
         private final Balloon balloon;
+        private final String baselineSignature;
+        private final String baselineMethodText;
+        private final String methodName;
 
         private PendingComment(
                 @NotNull Editor editor,
-                @NotNull RangeMarker rangeMarker,
+                @NotNull RangeMarker commentRangeMarker,
+                @NotNull RangeMarker methodRangeMarker,
                 @Nullable RangeHighlighter highlighter,
-                @Nullable Balloon balloon
+                @Nullable Balloon balloon,
+                @NotNull String baselineSignature,
+                @NotNull String baselineMethodText,
+                @NotNull String methodName
         ) {
             this.editor = editor;
-            this.rangeMarker = rangeMarker;
+            this.commentRangeMarker = commentRangeMarker;
+            this.methodRangeMarker = methodRangeMarker;
             this.highlighter = highlighter;
             this.balloon = balloon;
+            this.baselineSignature = baselineSignature;
+            this.baselineMethodText = baselineMethodText;
+            this.methodName = methodName;
         }
     }
 }
