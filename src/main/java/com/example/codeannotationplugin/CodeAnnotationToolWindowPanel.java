@@ -67,8 +67,7 @@ public class CodeAnnotationToolWindowPanel {
     private final JPanel rootPanel;
     private final JTextArea outputArea;
 
-    @Nullable
-    private PendingComment pendingComment;
+    private final List<PendingComment> pendingComments = new ArrayList<>();
     private CommentDetailLevel selectedDetailLevel = CommentDetailLevel.CONCISE;
 
     public CodeAnnotationToolWindowPanel(Project project) {
@@ -95,6 +94,7 @@ public class CodeAnnotationToolWindowPanel {
         JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 8, 8));
         JButton generateButton = new JButton("生成注释");
         JButton detailLevelButton = new JButton(buildDetailLevelButtonText());
+        JButton keepAllButton = new JButton("一键保留");
         JButton annotateAllButton = new JButton("一键注释全文件");
 
         buttonPanel.add(generateButton);
@@ -102,6 +102,7 @@ public class CodeAnnotationToolWindowPanel {
 
         generateButton.addActionListener(e -> runGenerateFlow());
         detailLevelButton.addActionListener(e -> toggleCommentDetailLevel(detailLevelButton));
+        keepAllButton.addActionListener(e -> keepAllPendingComments());
         annotateAllButton.addActionListener(e -> runGenerateAllFlow());
 
         JPanel topContainer = new JPanel();
@@ -110,7 +111,10 @@ public class CodeAnnotationToolWindowPanel {
         topContainer.add(Box.createRigidArea(new Dimension(0, 10)));
         topContainer.add(buttonPanel);
         topContainer.add(Box.createRigidArea(new Dimension(0, 8)));
-        topContainer.add(annotateAllButton);
+        JPanel batchButtonPanel = new JPanel(new GridLayout(1, 2, 8, 8));
+        batchButtonPanel.add(keepAllButton);
+        batchButtonPanel.add(annotateAllButton);
+        topContainer.add(batchButtonPanel);
 
         this.outputArea = new JTextArea();
         this.outputArea.setEditable(false);
@@ -148,11 +152,6 @@ public class CodeAnnotationToolWindowPanel {
     }
 
     private void runGenerateFlow() {
-        if (hasActivePendingComment()) {
-            appendOutputLater("[提示] 当前有一条临时注释，请先点击“保留”或“放弃”。");
-            return;
-        }
-
         ProgressManager.getInstance().run(new Task.Backgroundable(project, "代码注释请求", false) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
@@ -194,11 +193,6 @@ public class CodeAnnotationToolWindowPanel {
     }
 
     private void runGenerateAllFlow() {
-        if (hasActivePendingComment()) {
-            appendOutputLater("[提示] 当前有一条临时注释，请先点击“保留”或“放弃”。");
-            return;
-        }
-
         ProgressManager.getInstance().run(new Task.Backgroundable(project, "全文件一键注释", false) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
@@ -275,18 +269,6 @@ public class CodeAnnotationToolWindowPanel {
         });
     }
 
-    private boolean hasActivePendingComment() {
-        if (pendingComment == null) {
-            return false;
-        }
-        if (pendingComment.commentRangeMarker.isValid()) {
-            return true;
-        }
-        clearPendingVisuals(pendingComment);
-        pendingComment = null;
-        return false;
-    }
-
     private void handleGeneratedCommentResponse(@NotNull BackendClient.HttpResult response, @NotNull MethodContext context) {
         String generatedComment = JsonUtil.extractTopLevelStringField(response.getBody(), "generatedComment");
         if (generatedComment == null || generatedComment.isBlank()) {
@@ -328,20 +310,20 @@ public class CodeAnnotationToolWindowPanel {
         methodMarker.setGreedyToRight(true);
 
         RangeHighlighter highlighter = addPreviewHighlighter(editor, commentMarker);
-        Balloon balloon = showDecisionBalloon(editor, commentMarker);
 
         PendingComment newPendingComment = new PendingComment(
                 editor,
                 commentMarker,
                 methodMarker,
                 highlighter,
-                balloon,
+                null,
                 context.getMethodSignature(),
                 context.getMethodText(),
                 context.getMethodName()
         );
+        newPendingComment.balloon = showDecisionBalloon(editor, commentMarker, newPendingComment);
         registerHoverRestore(newPendingComment);
-        pendingComment = newPendingComment;
+        pendingComments.add(newPendingComment);
     }
 
     private int applyBatchComments(@NotNull List<GeneratedCommentItem> generatedItems) {
@@ -532,7 +514,7 @@ public class CodeAnnotationToolWindowPanel {
     }
 
     private void tryRestoreDecisionBalloonByHover(@NotNull PendingComment pending, @NotNull Point hoverPoint) {
-        if (pendingComment != pending) {
+        if (!pendingComments.contains(pending)) {
             return;
         }
         if (!pending.commentRangeMarker.isValid()) {
@@ -557,20 +539,20 @@ public class CodeAnnotationToolWindowPanel {
         cancelBalloonHideTimer(pending);
 
         ApplicationManager.getApplication().invokeLater(() -> {
-            if (pendingComment != pending || !pending.commentRangeMarker.isValid()) {
+            if (!pendingComments.contains(pending) || !pending.commentRangeMarker.isValid()) {
                 return;
             }
             if (pending.balloon != null && !pending.balloon.isDisposed()) {
                 pending.balloon.hide();
             }
-            pending.balloon = showDecisionBalloon(pending.editor, pending.commentRangeMarker);
+            pending.balloon = showDecisionBalloon(pending.editor, pending.commentRangeMarker, pending);
         });
     }
 
     private void scheduleBalloonHideOnLeave(@NotNull PendingComment pending) {
         cancelBalloonHideTimer(pending);
         Timer timer = new Timer(BALLOON_HIDE_DELAY_MS, e -> {
-            if (pendingComment != pending) {
+            if (!pendingComments.contains(pending)) {
                 return;
             }
             if (pending.isMouseInsidePreview) {
@@ -612,7 +594,7 @@ public class CodeAnnotationToolWindowPanel {
     }
 
     @Nullable
-    private Balloon showDecisionBalloon(@NotNull Editor editor, @NotNull RangeMarker marker) {
+    private Balloon showDecisionBalloon(@NotNull Editor editor, @NotNull RangeMarker marker, @NotNull PendingComment pending) {
         if (!marker.isValid()) {
             return null;
         }
@@ -623,8 +605,8 @@ public class CodeAnnotationToolWindowPanel {
         JButton keepButton = new JButton("保留");
         JButton discardButton = new JButton("放弃");
 
-        keepButton.addActionListener(e -> keepPendingComment());
-        discardButton.addActionListener(e -> discardPendingComment());
+        keepButton.addActionListener(e -> keepPendingComment(pending, true));
+        discardButton.addActionListener(e -> discardPendingComment(pending));
 
         panel.add(keepButton);
         panel.add(discardButton);
@@ -645,10 +627,36 @@ public class CodeAnnotationToolWindowPanel {
         return balloon;
     }
 
-    private void keepPendingComment() {
-        PendingComment current = pendingComment;
-        if (current == null) {
+    private void keepAllPendingComments() {
+        Editor selectedEditor = FileEditorManager.getInstance(project).getSelectedTextEditor();
+        List<PendingComment> snapshot = new ArrayList<>();
+        for (PendingComment pending : pendingComments) {
+            if (selectedEditor != null && pending.editor == selectedEditor) {
+                snapshot.add(pending);
+            }
+        }
+        if (snapshot.isEmpty()) {
+            appendOutputLater("[提示] 当前页面没有待保留的临时注释。");
             return;
+        }
+
+        int keptCount = 0;
+        for (PendingComment pending : snapshot) {
+            if (keepPendingComment(pending, false)) {
+                keptCount++;
+            }
+        }
+        appendOutputLater("已一键保留 " + keptCount + " 条临时注释。");
+    }
+
+    private boolean keepPendingComment(@NotNull PendingComment current, boolean notify) {
+        if (!pendingComments.contains(current)) {
+            return false;
+        }
+        if (!current.methodRangeMarker.isValid()) {
+            clearPendingVisuals(current);
+            pendingComments.remove(current);
+            return false;
         }
 
         methodChangeMonitor.watchMethod(
@@ -660,13 +668,15 @@ public class CodeAnnotationToolWindowPanel {
         );
 
         clearPendingVisuals(current);
-        pendingComment = null;
-        appendOutputLater("已保留注释，并开始监控方法变更。");
+        pendingComments.remove(current);
+        if (notify) {
+            appendOutputLater("已保留注释，并开始监控方法变更。");
+        }
+        return true;
     }
 
-    private void discardPendingComment() {
-        PendingComment current = pendingComment;
-        if (current == null) {
+    private void discardPendingComment(@NotNull PendingComment current) {
+        if (!pendingComments.contains(current)) {
             return;
         }
 
@@ -681,7 +691,7 @@ public class CodeAnnotationToolWindowPanel {
             }
 
             clearPendingVisuals(current);
-            pendingComment = null;
+            pendingComments.remove(current);
             appendOutputLater("已放弃并删除临时注释。");
         }));
     }
