@@ -81,7 +81,7 @@ public class CodeAnnotationToolWindowPanel {
 
         JLabel titleLabel = new JLabel("代码注释助手");
         JLabel subtitleLabel = new JLabel("项目：" + project.getName());
-        JLabel backendLabel = new JLabel("后端地址：" + backendBaseUrl);
+        JLabel backendLabel = new JLabel("作者：" + "cxlian");
 
         JPanel headerPanel = new JPanel();
         headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
