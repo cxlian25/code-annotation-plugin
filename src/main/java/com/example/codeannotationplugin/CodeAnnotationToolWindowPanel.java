@@ -130,7 +130,7 @@ public class CodeAnnotationToolWindowPanel {
 
         appendOutput("面板已初始化。");
         appendOutput("1) 请将光标放在 Java 方法内，或选中一段代码。");
-        appendOutput("2) 点击“代码风格”切换简洁/详细，再点击“生成注释”。");
+        appendOutput("2) 点击“注释风格”切换简洁/详细，再点击“生成注释”。");
         appendOutput("3) 点击“一键注释全文件”可批量处理当前页面所有方法。");
     }
 
@@ -140,7 +140,7 @@ public class CodeAnnotationToolWindowPanel {
 
     @NotNull
     private String buildDetailLevelButtonText() {
-        return "代码风格：" + selectedDetailLevel.getDisplayText();
+        return "注释风格：" + selectedDetailLevel.getDisplayText();
     }
 
     private void toggleCommentDetailLevel(@NotNull JButton detailLevelButton) {
@@ -148,7 +148,7 @@ public class CodeAnnotationToolWindowPanel {
                 ? CommentDetailLevel.DETAILED
                 : CommentDetailLevel.CONCISE;
         detailLevelButton.setText(buildDetailLevelButtonText());
-        appendOutput("已切换代码风格：" + selectedDetailLevel.getDisplayText());
+        appendOutput("已切换注释风格：" + selectedDetailLevel.getDisplayText());
     }
 
     private void runGenerateFlow() {
