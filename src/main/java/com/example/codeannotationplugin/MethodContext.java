@@ -39,35 +39,35 @@ public final class MethodContext {
     private final int methodEndOffset;
 
     public MethodContext(
-            @NotNull String language,
-            @NotNull String filePath,
-            @NotNull String className,
-            @NotNull String methodName,
-            @NotNull String methodSignature,
-            @NotNull String returnType,
-            @NotNull List<String> parameters,
-            @NotNull List<String> throwsTypes,
-            @NotNull List<String> annotations,
-            @NotNull List<String> imports,
-            @NotNull String docComment,
-            @NotNull String methodText,
-            @NotNull String selectedText,
-            @NotNull String contextBeforeSnippet,
-            @NotNull String contextAfterSnippet,
-            @NotNull String previousMethodSignature,
-            @NotNull String previousMethodText,
-            @NotNull String nextMethodSignature,
-            @NotNull String nextMethodText,
-            @NotNull String classSnippet,
-            boolean hasSelection,
-            int selectionStartOffset,
-            int selectionEndOffset,
-            int selectionStartLine,
-            int selectionEndLine,
-            int docCommentStartOffset,
-            int docCommentEndOffset,
-            int methodStartOffset,
-            int methodEndOffset
+            @NotNull String language,                // 编程语言
+            @NotNull String filePath,                // 文件路径
+            @NotNull String className,               // 所属类名
+            @NotNull String methodName,              // 方法名
+            @NotNull String methodSignature,         // 方法签名
+            @NotNull String returnType,              // 返回类型
+            @NotNull List<String> parameters,        // 参数列表
+            @NotNull List<String> throwsTypes,       // throws 异常类型列表
+            @NotNull List<String> annotations,       // 方法注解列表
+            @NotNull List<String> imports,           // import 语句列表
+            @NotNull String docComment,              // 已有文档注释
+            @NotNull String methodText,              // 完整方法源码
+            @NotNull String selectedText,            // 当前选中的代码片段
+            @NotNull String contextBeforeSnippet,    // 方法前文片段
+            @NotNull String contextAfterSnippet,     // 方法后文片段
+            @NotNull String previousMethodSignature, // 前一个方法签名
+            @NotNull String previousMethodText,      // 前一个方法源码
+            @NotNull String nextMethodSignature,     // 后一个方法签名
+            @NotNull String nextMethodText,          // 后一个方法源码
+            @NotNull String classSnippet,            // 当前类源码片段
+            boolean hasSelection,                    // 是否存在选区
+            int selectionStartOffset,                // 选区起始偏移量
+            int selectionEndOffset,                  // 选区结束偏移量
+            int selectionStartLine,                  // 选区起始行号
+            int selectionEndLine,                    // 选区结束行号
+            int docCommentStartOffset,               // 文档注释起始偏移量
+            int docCommentEndOffset,                 // 文档注释结束偏移量
+            int methodStartOffset,                   // 方法起始偏移量
+            int methodEndOffset                      // 方法结束偏移量
     ) {
         this.language = language;
         this.filePath = filePath;
