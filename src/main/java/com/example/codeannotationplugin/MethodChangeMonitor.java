@@ -212,12 +212,12 @@ public final class MethodChangeMonitor {
         int maxLen = Math.max(baseline.length(), current.length());
         int lenDiff = Math.abs(baseline.length() - current.length());
         double lenChangeRatio = (double) lenDiff / (double) maxLen;
-        if (lenChangeRatio >= 0.30) {
+        if (lenChangeRatio >= 0.05) {
             return true;
         }
 
         double similarity = tokenJaccardSimilarity(baseline, current);
-        return similarity < 0.65;
+        return similarity < 0.9;
     }
 
     private double tokenJaccardSimilarity(@NotNull String left, @NotNull String right) {
