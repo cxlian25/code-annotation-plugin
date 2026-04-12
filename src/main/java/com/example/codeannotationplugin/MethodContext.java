@@ -8,66 +8,66 @@ import java.util.List;
 
 public final class MethodContext {
 
-    private final String language;
-    private final String filePath;
-    private final String className;
-    private final String methodName;
-    private final String methodSignature;
-    private final String returnType;
-    private final List<String> parameters;
-    private final List<String> throwsTypes;
-    private final List<String> annotations;
-    private final List<String> imports;
-    private final String docComment;
-    private final String methodText;
-    private final String selectedText;
-    private final String contextBeforeSnippet;
-    private final String contextAfterSnippet;
-    private final String previousMethodSignature;
-    private final String previousMethodText;
-    private final String nextMethodSignature;
-    private final String nextMethodText;
-    private final String classSnippet;
-    private final boolean hasSelection;
-    private final int selectionStartOffset;
-    private final int selectionEndOffset;
-    private final int selectionStartLine;
-    private final int selectionEndLine;
-    private final int docCommentStartOffset;
-    private final int docCommentEndOffset;
-    private final int methodStartOffset;
-    private final int methodEndOffset;
+    private final String language;                  // 编程语言
+    private final String filePath;                  // 文件路径
+    private final String className;                 // 所属类名
+    private final String methodName;                // 方法名
+    private final String methodSignature;           // 方法签名
+    private final String returnType;                // 返回类型
+    private final List<String> parameters;          // 参数列表
+    private final List<String> throwsTypes;         // throws 异常类型列表
+    private final List<String> annotations;         // 方法注解列表
+    private final List<String> imports;             // import 语句列表
+    private final String docComment;                // 已有文档注释
+    private final String methodText;                // 完整方法源码
+    private final String selectedText;              // 当前选中的代码片段
+    private final String contextBeforeSnippet;      // 方法前文片段
+    private final String contextAfterSnippet;       // 方法后文片段
+    private final String previousMethodSignature;   // 前一个方法签名
+    private final String previousMethodText;        // 前一个方法源码
+    private final String nextMethodSignature;       // 后一个方法签名
+    private final String nextMethodText;            // 后一个方法源码
+    private final String classSnippet;              // 当前类源码片段
+    private final boolean hasSelection;             // 是否存在选区
+    private final int selectionStartOffset;         // 选区起始偏移量
+    private final int selectionEndOffset;           // 选区结束偏移量
+    private final int selectionStartLine;           // 选区起始行号
+    private final int selectionEndLine;             // 选区结束行号
+    private final int docCommentStartOffset;        // 文档注释起始偏移量
+    private final int docCommentEndOffset;          // 文档注释结束偏移量
+    private final int methodStartOffset;            // 方法起始偏移量
+    private final int methodEndOffset;              // 方法结束偏移量
 
     public MethodContext(
-            @NotNull String language,                // 编程语言
-            @NotNull String filePath,                // 文件路径
-            @NotNull String className,               // 所属类名
-            @NotNull String methodName,              // 方法名
-            @NotNull String methodSignature,         // 方法签名
-            @NotNull String returnType,              // 返回类型
-            @NotNull List<String> parameters,        // 参数列表
-            @NotNull List<String> throwsTypes,       // throws 异常类型列表
-            @NotNull List<String> annotations,       // 方法注解列表
-            @NotNull List<String> imports,           // import 语句列表
-            @NotNull String docComment,              // 已有文档注释
-            @NotNull String methodText,              // 完整方法源码
-            @NotNull String selectedText,            // 当前选中的代码片段
-            @NotNull String contextBeforeSnippet,    // 方法前文片段
-            @NotNull String contextAfterSnippet,     // 方法后文片段
-            @NotNull String previousMethodSignature, // 前一个方法签名
-            @NotNull String previousMethodText,      // 前一个方法源码
-            @NotNull String nextMethodSignature,     // 后一个方法签名
-            @NotNull String nextMethodText,          // 后一个方法源码
-            @NotNull String classSnippet,            // 当前类源码片段
-            boolean hasSelection,                    // 是否存在选区
-            int selectionStartOffset,                // 选区起始偏移量
-            int selectionEndOffset,                  // 选区结束偏移量
-            int selectionStartLine,                  // 选区起始行号
-            int selectionEndLine,                    // 选区结束行号
-            int docCommentStartOffset,               // 文档注释起始偏移量
-            int docCommentEndOffset,                 // 文档注释结束偏移量
-            int methodStartOffset,                   // 方法起始偏移量
-            int methodEndOffset                      // 方法结束偏移量
+            @NotNull String language,
+            @NotNull String filePath,
+            @NotNull String className,
+            @NotNull String methodName,
+            @NotNull String methodSignature,
+            @NotNull String returnType,
+            @NotNull List<String> parameters,
+            @NotNull List<String> throwsTypes,
+            @NotNull List<String> annotations,
+            @NotNull List<String> imports,
+            @NotNull String docComment,
+            @NotNull String methodText,
+            @NotNull String selectedText,
+            @NotNull String contextBeforeSnippet,
+            @NotNull String contextAfterSnippet,
+            @NotNull String previousMethodSignature,
+            @NotNull String previousMethodText,
+            @NotNull String nextMethodSignature,
+            @NotNull String nextMethodText,
+            @NotNull String classSnippet,
+            boolean hasSelection,
+            int selectionStartOffset,
+            int selectionEndOffset,
+            int selectionStartLine,
+            int selectionEndLine,
+            int docCommentStartOffset,
+            int docCommentEndOffset,
+            int methodStartOffset,
+            int methodEndOffset
     ) {
         this.language = language;
         this.filePath = filePath;
