@@ -17,9 +17,17 @@ public final class MethodContext {
     private final List<String> parameters;
     private final List<String> throwsTypes;
     private final List<String> annotations;
+    private final List<String> imports;
     private final String docComment;
     private final String methodText;
     private final String selectedText;
+    private final String contextBeforeSnippet;
+    private final String contextAfterSnippet;
+    private final String previousMethodSignature;
+    private final String previousMethodText;
+    private final String nextMethodSignature;
+    private final String nextMethodText;
+    private final String classSnippet;
     private final boolean hasSelection;
     private final int selectionStartOffset;
     private final int selectionEndOffset;
@@ -40,9 +48,17 @@ public final class MethodContext {
             @NotNull List<String> parameters,
             @NotNull List<String> throwsTypes,
             @NotNull List<String> annotations,
+            @NotNull List<String> imports,
             @NotNull String docComment,
             @NotNull String methodText,
             @NotNull String selectedText,
+            @NotNull String contextBeforeSnippet,
+            @NotNull String contextAfterSnippet,
+            @NotNull String previousMethodSignature,
+            @NotNull String previousMethodText,
+            @NotNull String nextMethodSignature,
+            @NotNull String nextMethodText,
+            @NotNull String classSnippet,
             boolean hasSelection,
             int selectionStartOffset,
             int selectionEndOffset,
@@ -62,9 +78,17 @@ public final class MethodContext {
         this.parameters = Collections.unmodifiableList(new ArrayList<>(parameters));
         this.throwsTypes = Collections.unmodifiableList(new ArrayList<>(throwsTypes));
         this.annotations = Collections.unmodifiableList(new ArrayList<>(annotations));
+        this.imports = Collections.unmodifiableList(new ArrayList<>(imports));
         this.docComment = docComment;
         this.methodText = methodText;
         this.selectedText = selectedText;
+        this.contextBeforeSnippet = contextBeforeSnippet;
+        this.contextAfterSnippet = contextAfterSnippet;
+        this.previousMethodSignature = previousMethodSignature;
+        this.previousMethodText = previousMethodText;
+        this.nextMethodSignature = nextMethodSignature;
+        this.nextMethodText = nextMethodText;
+        this.classSnippet = classSnippet;
         this.hasSelection = hasSelection;
         this.selectionStartOffset = selectionStartOffset;
         this.selectionEndOffset = selectionEndOffset;
@@ -112,6 +136,10 @@ public final class MethodContext {
         return annotations;
     }
 
+    public List<String> getImports() {
+        return imports;
+    }
+
     public String getDocComment() {
         return docComment;
     }
@@ -122,6 +150,34 @@ public final class MethodContext {
 
     public String getSelectedText() {
         return selectedText;
+    }
+
+    public String getContextBeforeSnippet() {
+        return contextBeforeSnippet;
+    }
+
+    public String getContextAfterSnippet() {
+        return contextAfterSnippet;
+    }
+
+    public String getPreviousMethodSignature() {
+        return previousMethodSignature;
+    }
+
+    public String getPreviousMethodText() {
+        return previousMethodText;
+    }
+
+    public String getNextMethodSignature() {
+        return nextMethodSignature;
+    }
+
+    public String getNextMethodText() {
+        return nextMethodText;
+    }
+
+    public String getClassSnippet() {
+        return classSnippet;
     }
 
     public boolean hasSelection() {

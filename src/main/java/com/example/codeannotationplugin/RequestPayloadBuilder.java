@@ -20,6 +20,22 @@ public final class RequestPayloadBuilder {
         builder.append(',');
         appendStringField(builder, "context", contextText);
         builder.append(',');
+        appendArrayField(builder, "imports", context.getImports());
+        builder.append(',');
+        appendStringField(builder, "contextBeforeSnippet", context.getContextBeforeSnippet());
+        builder.append(',');
+        appendStringField(builder, "contextAfterSnippet", context.getContextAfterSnippet());
+        builder.append(',');
+        appendStringField(builder, "previousMethodSignature", context.getPreviousMethodSignature());
+        builder.append(',');
+        appendStringField(builder, "previousMethodText", context.getPreviousMethodText());
+        builder.append(',');
+        appendStringField(builder, "nextMethodSignature", context.getNextMethodSignature());
+        builder.append(',');
+        appendStringField(builder, "nextMethodText", context.getNextMethodText());
+        builder.append(',');
+        appendStringField(builder, "classSnippet", context.getClassSnippet());
+        builder.append(',');
         appendStringField(builder, "commentDetailLevel", commentDetailLevel);
         builder.append('}');
         return builder.toString();
@@ -45,12 +61,21 @@ public final class RequestPayloadBuilder {
         appendListLine(builder, "parameters", context.getParameters());
         appendListLine(builder, "throwsTypes", context.getThrowsTypes());
         appendListLine(builder, "annotations", context.getAnnotations());
+        appendListLine(builder, "imports", context.getImports());
 
         if (context.hasSelection()) {
             appendLine(builder, "selectionLines", context.getSelectionStartLine() + "-" + context.getSelectionEndLine());
             appendLine(builder, "selectedText", context.getSelectedText());
             appendLine(builder, "enclosingMethod", context.getMethodText());
         }
+
+        appendOptionalLine(builder, "contextBeforeSnippet", context.getContextBeforeSnippet());
+        appendOptionalLine(builder, "contextAfterSnippet", context.getContextAfterSnippet());
+        appendOptionalLine(builder, "previousMethodSignature", context.getPreviousMethodSignature());
+        appendOptionalLine(builder, "previousMethodText", context.getPreviousMethodText());
+        appendOptionalLine(builder, "nextMethodSignature", context.getNextMethodSignature());
+        appendOptionalLine(builder, "nextMethodText", context.getNextMethodText());
+        appendOptionalLine(builder, "classSnippet", context.getClassSnippet());
 
         if (!context.getDocComment().isBlank()) {
             appendLine(builder, "existingDocComment", context.getDocComment());
@@ -70,9 +95,28 @@ public final class RequestPayloadBuilder {
         appendLine(builder, key, String.join(" | ", values));
     }
 
+    private static void appendOptionalLine(@NotNull StringBuilder builder, @NotNull String key, @NotNull String value) {
+        if (!value.isBlank()) {
+            appendLine(builder, key, value);
+        }
+    }
+
     private static void appendStringField(@NotNull StringBuilder builder, @NotNull String key, @NotNull String value) {
         builder.append('"').append(JsonUtil.escape(key)).append('"')
                 .append(':')
                 .append('"').append(JsonUtil.escape(value)).append('"');
+    }
+
+    private static void appendArrayField(@NotNull StringBuilder builder, @NotNull String key, @NotNull List<String> values) {
+        builder.append('"').append(JsonUtil.escape(key)).append('"')
+                .append(':')
+                .append('[');
+        for (int i = 0; i < values.size(); i++) {
+            if (i > 0) {
+                builder.append(',');
+            }
+            builder.append('"').append(JsonUtil.escape(values.get(i))).append('"');
+        }
+        builder.append(']');
     }
 }

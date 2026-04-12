@@ -12,6 +12,9 @@ import com.intellij.psi.PsiClassType;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiImportList;
+import com.intellij.psi.PsiImportStatementBase;
+import com.intellij.psi.PsiJavaFile;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiParameter;
 import com.intellij.psi.PsiType;
@@ -26,6 +29,9 @@ import java.util.Comparator;
 import java.util.List;
 
 public final class MethodContextExtractor {
+    private static final int CONTEXT_CHAR_WINDOW = 1200;
+    private static final int METHOD_SNIPPET_MAX_CHARS = 2500;
+    private static final int CLASS_SNIPPET_MAX_CHARS = 5000;
 
     private MethodContextExtractor() {
     }
@@ -191,6 +197,7 @@ public final class MethodContextExtractor {
             String qualifiedName = annotation.getQualifiedName();
             annotations.add(qualifiedName == null ? annotation.getText() : qualifiedName);
         }
+        List<String> imports = extractImports(psiFile);
 
         PsiDocComment methodDocComment = method.getDocComment();
         String docComment = methodDocComment == null ? "" : methodDocComment.getText();
@@ -205,6 +212,12 @@ public final class MethodContextExtractor {
         TextRange methodRange = method.getTextRange();
         int methodStartOffset = clampOffset(document, methodRange.getStartOffset());
         int methodEndOffset = clampOffsetInclusive(document, methodRange.getEndOffset());
+        int beforeStartOffset = Math.max(0, methodStartOffset - CONTEXT_CHAR_WINDOW);
+        int afterEndOffset = Math.min(document.getTextLength(), methodEndOffset + CONTEXT_CHAR_WINDOW);
+        String contextBeforeSnippet = safeSubstring(document, beforeStartOffset, methodStartOffset);
+        String contextAfterSnippet = safeSubstring(document, methodEndOffset, afterEndOffset);
+        MethodNeighborContext neighborContext = extractMethodNeighborContext(containingClass, method);
+        String classSnippet = containingClass == null ? "" : truncateText(containingClass.getText(), CLASS_SNIPPET_MAX_CHARS);
 
         return new MethodContext(
                 language,
@@ -216,9 +229,17 @@ public final class MethodContextExtractor {
                 parameters,
                 throwsTypes,
                 annotations,
+                imports,
                 docComment,
                 method.getText(),
                 selectedText,
+                contextBeforeSnippet,
+                contextAfterSnippet,
+                neighborContext.previousMethodSignature,
+                neighborContext.previousMethodText,
+                neighborContext.nextMethodSignature,
+                neighborContext.nextMethodText,
+                classSnippet,
                 hasSelection,
                 normalizedStart,
                 normalizedEnd,
@@ -318,6 +339,95 @@ public final class MethodContextExtractor {
     }
 
     @NotNull
+    private static List<String> extractImports(@NotNull PsiFile psiFile) {
+        if (!(psiFile instanceof PsiJavaFile javaFile)) {
+            return List.of();
+        }
+
+        PsiImportList importList = javaFile.getImportList();
+        if (importList == null) {
+            return List.of();
+        }
+
+        List<String> imports = new ArrayList<>();
+        for (PsiImportStatementBase statement : importList.getAllImportStatements()) {
+            String text = statement.getText();
+            if (text != null && !text.isBlank()) {
+                imports.add(text);
+            }
+        }
+        return imports;
+    }
+
+    @NotNull
+    private static MethodNeighborContext extractMethodNeighborContext(@Nullable PsiClass containingClass, @NotNull PsiMethod currentMethod) {
+        if (containingClass == null) {
+            return MethodNeighborContext.empty();
+        }
+
+        PsiMethod[] methods = containingClass.getMethods();
+        if (methods.length == 0) {
+            return MethodNeighborContext.empty();
+        }
+
+        int currentIndex = -1;
+        for (int i = 0; i < methods.length; i++) {
+            if (methods[i] == currentMethod) {
+                currentIndex = i;
+                break;
+            }
+        }
+
+        if (currentIndex < 0) {
+            return MethodNeighborContext.empty();
+        }
+
+        String previousMethodSignature = "";
+        String previousMethodText = "";
+        if (currentIndex > 0) {
+            PsiMethod previousMethod = methods[currentIndex - 1];
+            previousMethodSignature = buildMethodSignature(previousMethod, resolveReturnTypeText(previousMethod));
+            previousMethodText = truncateText(previousMethod.getText(), METHOD_SNIPPET_MAX_CHARS);
+        }
+
+        String nextMethodSignature = "";
+        String nextMethodText = "";
+        if (currentIndex < methods.length - 1) {
+            PsiMethod nextMethod = methods[currentIndex + 1];
+            nextMethodSignature = buildMethodSignature(nextMethod, resolveReturnTypeText(nextMethod));
+            nextMethodText = truncateText(nextMethod.getText(), METHOD_SNIPPET_MAX_CHARS);
+        }
+
+        return new MethodNeighborContext(
+                previousMethodSignature,
+                previousMethodText,
+                nextMethodSignature,
+                nextMethodText
+        );
+    }
+
+    @NotNull
+    private static String resolveReturnTypeText(@NotNull PsiMethod method) {
+        if (method.isConstructor()) {
+            return "constructor";
+        }
+        PsiType returnType = method.getReturnType();
+        if (returnType == null) {
+            return "void";
+        }
+        return returnType.getPresentableText();
+    }
+
+    @NotNull
+    private static String truncateText(@NotNull String text, int maxChars) {
+        if (text.length() <= maxChars) {
+            return text;
+        }
+        int safeMax = Math.max(0, maxChars);
+        return text.substring(0, safeMax) + "\n... [truncated]";
+    }
+
+    @NotNull
     private static String buildMethodSignature(@NotNull PsiMethod method, @NotNull String returnType) {
         StringBuilder builder = new StringBuilder();
         builder.append(method.getName()).append('(');
@@ -333,6 +443,30 @@ public final class MethodContextExtractor {
         }
         builder.append(") : ").append(returnType);
         return builder.toString();
+    }
+
+    private static final class MethodNeighborContext {
+        private final String previousMethodSignature;
+        private final String previousMethodText;
+        private final String nextMethodSignature;
+        private final String nextMethodText;
+
+        private MethodNeighborContext(
+                @NotNull String previousMethodSignature,
+                @NotNull String previousMethodText,
+                @NotNull String nextMethodSignature,
+                @NotNull String nextMethodText
+        ) {
+            this.previousMethodSignature = previousMethodSignature;
+            this.previousMethodText = previousMethodText;
+            this.nextMethodSignature = nextMethodSignature;
+            this.nextMethodText = nextMethodText;
+        }
+
+        @NotNull
+        private static MethodNeighborContext empty() {
+            return new MethodNeighborContext("", "", "", "");
+        }
     }
 
     public static final class ExtractionResult {

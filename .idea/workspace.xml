@@ -4,9 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="49b2f4c4-452d-41ac-a4d2-1a8499548648" name="更改" comment="feat: 修改页面信息">
+    <list default="true" id="49b2f4c4-452d-41ac-a4d2-1a8499548648" name="更改" comment="fix: 修正部分表述">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/CodeAnnotationToolWindowPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/CodeAnnotationToolWindowPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/MethodContext.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/MethodContext.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/MethodContextExtractor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/MethodContextExtractor.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/RequestPayloadBuilder.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/codeannotationplugin/RequestPayloadBuilder.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -144,7 +146,7 @@
       <workItem from="1775100299207" duration="649000" />
       <workItem from="1775839130797" duration="1092000" />
       <workItem from="1775919088943" duration="3095000" />
-      <workItem from="1775970778170" duration="648000" />
+      <workItem from="1775970778170" duration="3727000" />
     </task>
     <task id="LOCAL-00001" summary="feat:基本功能">
       <option name="closed" value="true" />
@@ -234,7 +236,15 @@
       <option name="project" value="LOCAL" />
       <updated>1775100425649</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="fix: 修正部分表述">
+      <option name="closed" value="true" />
+      <created>1775976149619</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1775976149619</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -273,7 +283,8 @@
     <MESSAGE value="feat: 修改配置" />
     <MESSAGE value="feat: 添加一键生成本界面所有方法注释" />
     <MESSAGE value="feat: 添加一键保留本页所有注释" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat: 添加一键保留本页所有注释" />
+    <MESSAGE value="fix: 修正部分表述" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix: 修正部分表述" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
