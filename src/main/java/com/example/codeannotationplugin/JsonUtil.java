@@ -72,6 +72,20 @@ public final class JsonUtil {
         }
     }
 
+    @Nullable
+    public static String extractFirstTopLevelStringField(@NotNull String json, @NotNull String... fieldNames) {
+        for (String fieldName : fieldNames) {
+            if (fieldName == null || fieldName.isBlank()) {
+                continue;
+            }
+            String value = extractTopLevelStringField(json, fieldName);
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
     private static int findNextNonWhitespace(@NotNull String text, int fromIndex) {
         for (int i = fromIndex; i < text.length(); i++) {
             if (!Character.isWhitespace(text.charAt(i))) {

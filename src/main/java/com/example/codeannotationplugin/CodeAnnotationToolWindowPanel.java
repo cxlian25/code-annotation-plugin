@@ -225,9 +225,21 @@ public class CodeAnnotationToolWindowPanel {
                     String requestJson = RequestPayloadBuilder.buildGenerateRequest(context, selectedDetailLevel.name());
                     try {
                         BackendClient.HttpResult response = backendClient.postJson(endpoint, requestJson);
+                        if (!isSuccessful(response)) {
+                            String failure = summarizeBackendFailure(response);
+                            failedMethods.add(context.getMethodName() + "(" + failure + ")");
+                            appendOutputLater("[错误] " + context.getMethodName() + ": " + failure);
+                            continue;
+                        }
                         String generatedComment = JsonUtil.extractTopLevelStringField(response.getBody(), "generatedComment");
                         if (generatedComment == null || generatedComment.isBlank()) {
-                            failedMethods.add(context.getMethodName() + "(返回为空)");
+                            String backendMessage = extractBackendMessage(response.getBody());
+                            if (backendMessage != null && !backendMessage.isBlank()) {
+                                failedMethods.add(context.getMethodName() + "(" + backendMessage + ")");
+                                appendOutputLater("[错误] " + context.getMethodName() + ": " + backendMessage);
+                            } else {
+                                failedMethods.add(context.getMethodName() + "(返回为空)");
+                            }
                             continue;
                         }
                         generatedItems.add(new GeneratedCommentItem(context, generatedComment));
@@ -270,8 +282,18 @@ public class CodeAnnotationToolWindowPanel {
     }
 
     private void handleGeneratedCommentResponse(@NotNull BackendClient.HttpResult response, @NotNull MethodContext context) {
+        if (!isSuccessful(response)) {
+            appendOutputLater("[错误] " + summarizeBackendFailure(response));
+            return;
+        }
+
         String generatedComment = JsonUtil.extractTopLevelStringField(response.getBody(), "generatedComment");
         if (generatedComment == null || generatedComment.isBlank()) {
+            String backendMessage = extractBackendMessage(response.getBody());
+            if (backendMessage != null && !backendMessage.isBlank()) {
+                appendOutputLater("[错误] " + backendMessage);
+                return;
+            }
             appendOutputLater("[错误] 响应中未找到 generatedComment 字段。");
             return;
         }
@@ -324,6 +346,37 @@ public class CodeAnnotationToolWindowPanel {
         newPendingComment.balloon = showDecisionBalloon(editor, commentMarker, newPendingComment);
         registerHoverRestore(newPendingComment);
         pendingComments.add(newPendingComment);
+    }
+
+    private boolean isSuccessful(@NotNull BackendClient.HttpResult response) {
+        int statusCode = response.getStatusCode();
+        return statusCode >= 200 && statusCode < 300;
+    }
+
+    @NotNull
+    private String summarizeBackendFailure(@NotNull BackendClient.HttpResult response) {
+        String backendMessage = extractBackendMessage(response.getBody());
+        if (backendMessage != null && !backendMessage.isBlank()) {
+            return "后端错误 " + response.getStatusCode() + ": " + backendMessage;
+        }
+        return "后端错误 " + response.getStatusCode() + ": " + previewResponseBody(response.getBody());
+    }
+
+    @Nullable
+    private String extractBackendMessage(@NotNull String responseBody) {
+        return JsonUtil.extractFirstTopLevelStringField(responseBody, "message", "error");
+    }
+
+    @NotNull
+    private String previewResponseBody(@NotNull String responseBody) {
+        String normalized = responseBody.replaceAll("\\s+", " ").trim();
+        if (normalized.isEmpty()) {
+            return "empty response";
+        }
+        if (normalized.length() <= 180) {
+            return normalized;
+        }
+        return normalized.substring(0, 180) + "...";
     }
 
     private int applyBatchComments(@NotNull List<GeneratedCommentItem> generatedItems) {
