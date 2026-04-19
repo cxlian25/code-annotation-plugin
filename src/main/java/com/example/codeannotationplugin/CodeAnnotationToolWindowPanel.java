@@ -19,6 +19,7 @@ import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.popup.Balloon;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
+import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.awt.RelativePoint;
@@ -29,6 +30,7 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -83,13 +85,22 @@ public class CodeAnnotationToolWindowPanel {
         JLabel subtitleLabel = new JLabel("项目：" + project.getName());
         JLabel backendLabel = new JLabel("作者：" + "cxlian");
 
+        Icon pluginIcon = IconLoader.getIcon("/META-INF/pluginIcon.svg", CodeAnnotationToolWindowPanel.class);
+        JLabel iconLabel = new JLabel(pluginIcon);
+        iconLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 12));
+
         JPanel headerPanel = new JPanel();
         headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
         headerPanel.add(titleLabel);
         headerPanel.add(Box.createRigidArea(new Dimension(0, 4)));
         headerPanel.add(subtitleLabel);
         headerPanel.add(Box.createRigidArea(new Dimension(0, 4)));
         headerPanel.add(backendLabel);
+
+        JPanel headerContainer = new JPanel(new BorderLayout());
+        headerContainer.add(iconLabel, BorderLayout.WEST);
+        headerContainer.add(headerPanel, BorderLayout.CENTER);
 
         JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 8, 8));
         JButton generateButton = new JButton("生成注释");
@@ -107,7 +118,7 @@ public class CodeAnnotationToolWindowPanel {
 
         JPanel topContainer = new JPanel();
         topContainer.setLayout(new BoxLayout(topContainer, BoxLayout.Y_AXIS));
-        topContainer.add(headerPanel);
+        topContainer.add(headerContainer);
         topContainer.add(Box.createRigidArea(new Dimension(0, 10)));
         topContainer.add(buttonPanel);
         topContainer.add(Box.createRigidArea(new Dimension(0, 8)));
