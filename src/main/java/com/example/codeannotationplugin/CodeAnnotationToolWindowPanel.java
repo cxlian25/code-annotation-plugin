@@ -242,8 +242,8 @@ public class CodeAnnotationToolWindowPanel {
                             appendOutputLater("[错误] " + context.getMethodName() + ": " + failure);
                             continue;
                         }
-                        String generatedComment = JsonUtil.extractTopLevelStringField(response.getBody(), "generatedComment");
-                        if (generatedComment == null || generatedComment.isBlank()) {
+                        GeneratedAnnotationResult generatedResult = parseGeneratedAnnotationResult(response.getBody());
+                        if (generatedResult.generatedComment == null || generatedResult.generatedComment.isBlank()) {
                             String backendMessage = extractBackendMessage(response.getBody());
                             if (backendMessage != null && !backendMessage.isBlank()) {
                                 failedMethods.add(context.getMethodName() + "(" + backendMessage + ")");
@@ -253,7 +253,10 @@ public class CodeAnnotationToolWindowPanel {
                             }
                             continue;
                         }
-                        generatedItems.add(new GeneratedCommentItem(context, generatedComment));
+                        if (generatedResult.llmFallbackUsed) {
+                            appendOutputLater("[LLM fallback] " + context.getMethodName() + ": " + buildFallbackSummary(generatedResult));
+                        }
+                        generatedItems.add(new GeneratedCommentItem(context, generatedResult.generatedComment));
                     } catch (HttpTimeoutException timeoutException) {
                         failedMethods.add(context.getMethodName() + "(超时)");
                     } catch (ConnectException connectException) {
@@ -298,7 +301,8 @@ public class CodeAnnotationToolWindowPanel {
             return;
         }
 
-        String generatedComment = JsonUtil.extractTopLevelStringField(response.getBody(), "generatedComment");
+        GeneratedAnnotationResult generatedResult = parseGeneratedAnnotationResult(response.getBody());
+        String generatedComment = generatedResult.generatedComment;
         if (generatedComment == null || generatedComment.isBlank()) {
             String backendMessage = extractBackendMessage(response.getBody());
             if (backendMessage != null && !backendMessage.isBlank()) {
@@ -309,7 +313,7 @@ public class CodeAnnotationToolWindowPanel {
             return;
         }
 
-        replaceOutputLater(generatedComment);
+        replaceOutputLater(buildOutputBoardText(generatedResult));
         ApplicationManager.getApplication().invokeLater(() ->
                 WriteCommandAction.runWriteCommandAction(project, "插入临时注释", null, () -> insertPreviewComment(context, generatedComment))
         );
@@ -376,6 +380,67 @@ public class CodeAnnotationToolWindowPanel {
     @Nullable
     private String extractBackendMessage(@NotNull String responseBody) {
         return JsonUtil.extractFirstTopLevelStringField(responseBody, "message", "error");
+    }
+
+    @NotNull
+    private GeneratedAnnotationResult parseGeneratedAnnotationResult(@NotNull String responseBody) {
+        String generatedComment = JsonUtil.extractTopLevelStringField(responseBody, "generatedComment");
+        String requestedProvider = JsonUtil.extractTopLevelStringField(responseBody, "llmRequestedProvider");
+        String actualProvider = JsonUtil.extractTopLevelStringField(responseBody, "llmActualProvider");
+        String fallbackReason = JsonUtil.extractTopLevelStringField(responseBody, "llmFallbackReason");
+        Boolean fallbackUsed = JsonUtil.extractTopLevelBooleanField(responseBody, "llmFallbackUsed");
+        return new GeneratedAnnotationResult(
+                generatedComment,
+                requestedProvider,
+                actualProvider,
+                Boolean.TRUE.equals(fallbackUsed),
+                fallbackReason
+        );
+    }
+
+    @NotNull
+    private String buildOutputBoardText(@NotNull GeneratedAnnotationResult generatedResult) {
+        if (!generatedResult.llmFallbackUsed) {
+            return generatedResult.generatedComment == null ? "" : generatedResult.generatedComment;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        if (generatedResult.generatedComment != null) {
+            builder.append(generatedResult.generatedComment.trim());
+        }
+        if (builder.length() > 0) {
+            builder.append("\n\n");
+        }
+        builder.append("[LLM fallback]\n");
+        builder.append("provider: ")
+                .append(defaultText(generatedResult.llmRequestedProvider, "unknown"))
+                .append(" -> ")
+                .append(defaultText(generatedResult.llmActualProvider, "unknown"));
+        if (!isBlank(generatedResult.llmFallbackReason)) {
+            builder.append("\nreason: ").append(generatedResult.llmFallbackReason.trim());
+        }
+        return builder.toString();
+    }
+
+    @NotNull
+    private String buildFallbackSummary(@NotNull GeneratedAnnotationResult generatedResult) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(defaultText(generatedResult.llmRequestedProvider, "unknown"))
+                .append(" -> ")
+                .append(defaultText(generatedResult.llmActualProvider, "unknown"));
+        if (!isBlank(generatedResult.llmFallbackReason)) {
+            builder.append(", reason=").append(generatedResult.llmFallbackReason.trim());
+        }
+        return builder.toString();
+    }
+
+    @NotNull
+    private String defaultText(@Nullable String value, @NotNull String fallback) {
+        return isBlank(value) ? fallback : value.trim();
+    }
+
+    private boolean isBlank(@Nullable String value) {
+        return value == null || value.isBlank();
     }
 
     @NotNull
@@ -821,6 +886,32 @@ public class CodeAnnotationToolWindowPanel {
         private GeneratedCommentItem(@NotNull MethodContext methodContext, @NotNull String generatedComment) {
             this.methodContext = methodContext;
             this.generatedComment = generatedComment;
+        }
+    }
+
+    private static final class GeneratedAnnotationResult {
+        @Nullable
+        private final String generatedComment;
+        @Nullable
+        private final String llmRequestedProvider;
+        @Nullable
+        private final String llmActualProvider;
+        private final boolean llmFallbackUsed;
+        @Nullable
+        private final String llmFallbackReason;
+
+        private GeneratedAnnotationResult(
+                @Nullable String generatedComment,
+                @Nullable String llmRequestedProvider,
+                @Nullable String llmActualProvider,
+                boolean llmFallbackUsed,
+                @Nullable String llmFallbackReason
+        ) {
+            this.generatedComment = generatedComment;
+            this.llmRequestedProvider = llmRequestedProvider;
+            this.llmActualProvider = llmActualProvider;
+            this.llmFallbackUsed = llmFallbackUsed;
+            this.llmFallbackReason = llmFallbackReason;
         }
     }
 

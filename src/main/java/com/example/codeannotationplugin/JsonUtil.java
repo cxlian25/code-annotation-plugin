@@ -86,6 +86,37 @@ public final class JsonUtil {
         return null;
     }
 
+    @Nullable
+    public static Boolean extractTopLevelBooleanField(@NotNull String json, @NotNull String fieldName) {
+        String keyToken = "\"" + fieldName + "\"";
+        int searchFrom = 0;
+        while (true) {
+            int keyIndex = json.indexOf(keyToken, searchFrom);
+            if (keyIndex < 0) {
+                return null;
+            }
+
+            int colonIndex = findNextNonWhitespace(json, keyIndex + keyToken.length());
+            if (colonIndex < 0 || json.charAt(colonIndex) != ':') {
+                searchFrom = keyIndex + keyToken.length();
+                continue;
+            }
+
+            int valueStart = findNextNonWhitespace(json, colonIndex + 1);
+            if (valueStart < 0) {
+                return null;
+            }
+            if (json.startsWith("true", valueStart)) {
+                return Boolean.TRUE;
+            }
+            if (json.startsWith("false", valueStart)) {
+                return Boolean.FALSE;
+            }
+
+            searchFrom = keyIndex + keyToken.length();
+        }
+    }
+
     private static int findNextNonWhitespace(@NotNull String text, int fromIndex) {
         for (int i = fromIndex; i < text.length(); i++) {
             if (!Character.isWhitespace(text.charAt(i))) {
